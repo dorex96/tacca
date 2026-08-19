@@ -92,6 +92,8 @@
   "@aiImportOcrNotice": { "description": "Avviso in revisione quando le immagini sono state convertite in testo via OCR on-device perché il modello non supporta vision (RF-03)." },
   "aiImportRemoveImage": "Rimuovi immagine",
   "@aiImportRemoveImage": { "description": "Azione che rimuove un'immagine selezionata dall'import." },
+  "aiImportReviewNotice": "Contenuto generato dall'AI: controlla esercizi, serie e carichi prima di salvare, potrebbero esserci errori.",
+  "@aiImportReviewNotice": { "description": "Avviso mostrato in cima all'editor quando si rivede per la prima volta una bozza proposta dall'AI (RF-03), prima del salvataggio." },
 
   "planImagesTitle": "Immagini originali",
   "@planImagesTitle": { "description": "Titolo del visualizzatore delle immagini allegate a una scheda (RF-03)." },

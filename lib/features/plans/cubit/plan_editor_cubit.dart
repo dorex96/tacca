@@ -25,7 +25,14 @@ class PlanEditorCubit extends Cubit<PlanEditorState> {
     required PlanRepository repository,
     required WorkoutPlan draft,
   }) : _repository = repository,
-       super(PlanEditorState(draft: draft, isNew: true, isDirty: true)) {
+       super(
+         PlanEditorState(
+           draft: draft,
+           isNew: true,
+           isDirty: true,
+           isAiDraft: true,
+         ),
+       ) {
     // L'editor assume almeno un giorno (giorno implicito, §5.1).
     if (draft.days.isEmpty) {
       draft.days.add(WorkoutDay(label: 'Giorno unico', sortOrder: 0));

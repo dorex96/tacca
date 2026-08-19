@@ -24,6 +24,7 @@ sealed class PlanEditorState with _$PlanEditorState {
     @Default(false) bool isSaving,
     @Default(false) bool saveSuccess,
     @Default(0) int selectedDayIndex,
+    @Default(false) bool isAiDraft,
     String? errorMessage,
   }) = _PlanEditorState;
 

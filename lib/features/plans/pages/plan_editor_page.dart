@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/design/app_spacing.dart';
 import '../../../core/widgets/confirm_dialog.dart';
+import '../../../core/widgets/info_banner.dart';
 import '../../../data/entities/block.dart';
 import '../../../data/entities/workout_day.dart';
 import '../../../l10n/app_localizations.dart';
@@ -95,6 +96,13 @@ class PlanEditorPage extends StatelessWidget {
                 AppSpacing.xxl,
               ),
               children: [
+                if (state.isAiDraft) ...[
+                  InfoBanner(
+                    icon: Icons.auto_awesome,
+                    message: l10n.aiImportReviewNotice,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 TextFormField(
                   key: const ValueKey('plan-name'),
                   initialValue: state.draft.name,

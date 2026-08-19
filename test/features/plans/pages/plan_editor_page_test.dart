@@ -150,4 +150,47 @@ void main() {
       verifyNever(() => repository.savePlan(any()));
     },
   );
+
+  testWidgets(
+    'la creazione manuale non mostra l\'avviso di contenuto generato dall\'AI',
+    (tester) async {
+      await pumpEditor(tester);
+
+      expect(find.textContaining('Contenuto generato dall\'AI'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'la revisione di una bozza AI mostra l\'avviso di contenuto generato dall\'AI',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final draft = WorkoutPlan(
+        name: 'Scheda importata',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider(
+            create: (context) =>
+                PlanEditorCubit.draft(repository: repository, draft: draft),
+            child: const PlanEditorPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Contenuto generato dall\'AI'),
+        findsOneWidget,
+      );
+    },
+  );
 }
