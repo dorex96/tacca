@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Flutter app for managing gym workout plans ("schede di allenamento"). **M0–M2 are implemented**: plans archive + manual editor (RF-01/RF-02), workout session with `TimerEngine` and `WorkoutSessionBloc` (RF-06), and history (RF-07). **M3 (AI layer) is implemented in reduced scope**: **OpenRouter is the only provider** (Anthropic/Gemini deliberately not built; `AiProvider` remains the seam to add them), AI settings (RF-08) at `/settings/ai`, and import from camera photo / gallery images / pasted text (RF-03) at `/plans/new/import` with review through the manual editor (`PlanEditorCubit.draft`, route `/plans/new/review`). The models offered in the settings dropdown are **configuration, not code**: edit `assets/ai/models.json` (id, label, `supportsVision`, `supportsJsonSchema`, `defaultModelId`), loaded once in `main()` into `AiModelCatalog`. Chat-based create/edit (RF-04/RF-05) is **not** built yet. The real specification lives in `items/` (Italian):
+Flutter app for managing gym workout plans ("schede di allenamento"). **M0–M2 are implemented**: plans archive + manual editor (RF-01/RF-02), workout session with `TimerEngine` and `WorkoutSessionBloc` (RF-06), and history (RF-07). **M3 (AI layer) is implemented in reduced scope**: **OpenRouter is the only provider** (Anthropic/Gemini deliberately not built; `AiProvider` remains the seam to add them), AI settings (RF-08) at `/settings/ai`, and import from camera photo / gallery images / pasted text (RF-03) at `/plans/new/import` with review through the manual editor (`PlanEditorCubit.draft`, route `/plans/new/review`). The models offered in the settings dropdown are **configuration, not code**: edit `assets/ai/models.json` (id, label, `supportsVision`, `supportsJsonSchema`, `defaultModelId`), loaded once in `main()` into `AiModelCatalog`. Chat-based create/edit (RF-04/RF-05) is **out of scope and will not be built**: importing a plan and then editing it in the manual editor covers the need, so do not propose or start it. The real specification lives in `items/` (Italian):
 
 - `items/analisi-funzionale-app-schede-allenamento.md` — functional requirements (RF-01…RF-09), data model, UX rules.
 - `items/analisi-tecnica-app-schede-allenamento.md` — the authoritative technical design: stack, ADRs, folder layout, entities, state management, AI service, milestones.
+
+`items/` is git-ignored on purpose: it exists only in the maintainer's working copy, not in the public repository. What the public sees is `README.md` (what the app is, setup, architecture), `CONTRIBUTING.md` (conventions, tests, PR checklist) and `SECURITY.md` (BYOK key handling, how to report) — keep those three in sync when behaviour changes, and never quote the private spec verbatim into them.
 
 **Read the technical analysis before implementing anything.** Decisions there are already made (ObjectBox as DB, flutter_bloc, go_router, dio, BYOK AI) and should not be re-litigated. The UI language is Italian; user-facing strings go through ARB files (`app_it.arb`), never hardcoded.
 
@@ -17,7 +19,7 @@ Flutter app for managing gym workout plans ("schede di allenamento"). **M0–M2 
 flutter pub get                         # install dependencies
 flutter run                             # run on connected device/emulator
 flutter analyze                         # static analysis / lint (uses flutter_lints)
-dart format .                           # format (expected as pre-commit; no CI)
+dart format .                           # format (CI fails on any difference)
 flutter test                            # run all tests
 flutter test test/path/to/foo_test.dart # run a single test file
 flutter test --name "substring"         # run tests matching a name
@@ -83,4 +85,4 @@ Notes that bite:
 
 ## Milestone order
 
-M0 setup → M1 plans (entities/repos/editor) → M2 workout (TimerEngine + session + history) → M3 AI (providers + parser + import/chat) → M4 polish. The offline core (M1–M2) is built and must stand on its own before the AI layer (M3) is touched.
+M0 setup → M1 plans (entities/repos/editor) → M2 workout (TimerEngine + session + history) → M3 AI (providers + parser + import) → M4 polish. The offline core (M1–M2) is built and must stand on its own before the AI layer (M3) is touched.

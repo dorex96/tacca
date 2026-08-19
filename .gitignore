@@ -54,5 +54,7 @@ lib/l10n/app_localizations*.dart
 # (vedi test/data/objectbox_test_support.dart). Non serve nelle build reali:
 # objectbox_flutter_libs la fornisce già per iOS/Android.
 /lib/libobjectbox.dylib
+/lib/libobjectbox.so
+/lib/objectbox.dll
 
 /items

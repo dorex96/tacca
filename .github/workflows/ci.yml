@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un nuovo push sullo stesso ref annulla la run precedente.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.35.1'
+  # Libreria nativa ObjectBox per i test dei repository sull'host: senza,
+  # quei test si auto-saltano (test/data/objectbox_test_support.dart).
+  # Versione minima richiesta da objectbox 5.3.2.
+  OBJECTBOX_C_VERSION: '5.3.2'
+
+jobs:
+  analyze-and-test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Generate code (ObjectBox, freezed, json_serializable)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Download ObjectBox native library
+        run: |
+          mkdir -p /tmp/objectbox
+          curl -sSL "https://github.com/objectbox/objectbox-c/releases/download/v${OBJECTBOX_C_VERSION}/objectbox-linux-x64.tar.gz" \
+            | tar -xz -C /tmp/objectbox
+          cp "$(find /tmp/objectbox -name libobjectbox.so | head -1)" lib/
+
+      # Solo i file versionati: il codice generato non lo formattiamo noi.
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed $(git ls-files '*.dart')
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
