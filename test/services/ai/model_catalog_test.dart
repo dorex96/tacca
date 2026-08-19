@@ -1,4 +1,4 @@
-import 'package:app_palestra/services/ai/model_catalog.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

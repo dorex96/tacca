@@ -1,5 +1,5 @@
-import 'package:app_palestra/services/ai/dto/plan_dto.dart';
-import 'package:app_palestra/services/ai/plan_normalizer.dart';
+import 'package:tacca/services/ai/dto/plan_dto.dart';
+import 'package:tacca/services/ai/plan_normalizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 BlockDto _standard(List<String> names, {String? notes}) => BlockDto(

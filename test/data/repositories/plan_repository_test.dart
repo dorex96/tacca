@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import 'package:app_palestra/data/db/object_box.dart';
-import 'package:app_palestra/data/entities/block.dart';
-import 'package:app_palestra/data/entities/exercise.dart';
-import 'package:app_palestra/data/entities/workout_day.dart';
-import 'package:app_palestra/data/entities/workout_log.dart';
-import 'package:app_palestra/data/entities/workout_plan.dart';
-import 'package:app_palestra/data/repositories/plan_repository.dart';
-import 'package:app_palestra/objectbox.g.dart';
+import 'package:tacca/data/db/object_box.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/data/entities/exercise.dart';
+import 'package:tacca/data/entities/workout_day.dart';
+import 'package:tacca/data/entities/workout_log.dart';
+import 'package:tacca/data/entities/workout_plan.dart';
+import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/objectbox.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../objectbox_test_support.dart';

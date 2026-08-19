@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:app_palestra/data/entities/workout_plan.dart';
-import 'package:app_palestra/data/repositories/plan_repository.dart';
-import 'package:app_palestra/features/plans/cubit/plans_cubit.dart';
-import 'package:app_palestra/features/plans/pages/plans_page.dart';
-import 'package:app_palestra/l10n/app_localizations.dart';
+import 'package:tacca/data/entities/workout_plan.dart';
+import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/features/plans/cubit/plans_cubit.dart';
+import 'package:tacca/features/plans/pages/plans_page.dart';
+import 'package:tacca/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';

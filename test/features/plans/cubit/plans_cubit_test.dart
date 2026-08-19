@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:app_palestra/data/entities/workout_plan.dart';
-import 'package:app_palestra/data/repositories/plan_repository.dart';
-import 'package:app_palestra/features/plans/cubit/plans_cubit.dart';
+import 'package:tacca/data/entities/workout_plan.dart';
+import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/features/plans/cubit/plans_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

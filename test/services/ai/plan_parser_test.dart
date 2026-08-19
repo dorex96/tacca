@@ -1,5 +1,5 @@
-import 'package:app_palestra/data/entities/block.dart';
-import 'package:app_palestra/services/ai/plan_parser.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/services/ai/plan_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Fixture conforme allo schema §5.3 dell'analisi funzionale, con tutti i

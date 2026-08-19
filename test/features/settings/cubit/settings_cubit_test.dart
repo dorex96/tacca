@@ -1,8 +1,8 @@
-import 'package:app_palestra/core/errors/ai_exception.dart';
-import 'package:app_palestra/features/settings/cubit/settings_cubit.dart';
-import 'package:app_palestra/features/settings/cubit/settings_state.dart';
-import 'package:app_palestra/services/ai/ai_provider.dart';
-import 'package:app_palestra/services/ai/model_catalog.dart';
+import 'package:tacca/core/errors/ai_exception.dart';
+import 'package:tacca/features/settings/cubit/settings_cubit.dart';
+import 'package:tacca/features/settings/cubit/settings_state.dart';
+import 'package:tacca/services/ai/ai_provider.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/fakes.dart';

@@ -1,8 +1,8 @@
-import 'package:app_palestra/data/entities/block.dart';
-import 'package:app_palestra/data/entities/workout_day.dart';
-import 'package:app_palestra/data/entities/workout_plan.dart';
-import 'package:app_palestra/data/repositories/plan_repository.dart';
-import 'package:app_palestra/features/plans/cubit/plan_editor_cubit.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/data/entities/workout_day.dart';
+import 'package:tacca/data/entities/workout_plan.dart';
+import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/features/plans/cubit/plan_editor_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

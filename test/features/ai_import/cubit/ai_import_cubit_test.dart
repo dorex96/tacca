@@ -1,15 +1,15 @@
 import 'dart:typed_data';
 
-import 'package:app_palestra/core/errors/ai_exception.dart';
-import 'package:app_palestra/data/entities/block.dart';
-import 'package:app_palestra/features/ai_import/cubit/ai_import_cubit.dart';
-import 'package:app_palestra/features/ai_import/cubit/ai_import_state.dart';
-import 'package:app_palestra/services/ai/ai_provider.dart';
-import 'package:app_palestra/services/ai/dto/plan_dto.dart';
-import 'package:app_palestra/services/ai/model_catalog.dart';
-import 'package:app_palestra/services/images/image_input.dart';
-import 'package:app_palestra/services/images/ocr_service.dart';
-import 'package:app_palestra/services/images/plan_image_store.dart';
+import 'package:tacca/core/errors/ai_exception.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/features/ai_import/cubit/ai_import_cubit.dart';
+import 'package:tacca/features/ai_import/cubit/ai_import_state.dart';
+import 'package:tacca/services/ai/ai_provider.dart';
+import 'package:tacca/services/ai/dto/plan_dto.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
+import 'package:tacca/services/images/image_input.dart';
+import 'package:tacca/services/images/ocr_service.dart';
+import 'package:tacca/services/images/plan_image_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/fakes.dart';

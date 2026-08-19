@@ -1,5 +1,7 @@
-name: app_palestra
-description: "A new Flutter project."
+name: tacca
+description: "Gym workout plans: manual editor, guided session with timers, history and AI import of paper plans (BYOK)."
+repository: https://github.com/dorex96/tacca
+issue_tracker: https://github.com/dorex96/tacca/issues
 publish_to: 'none'
 version: 0.1.0+1
 

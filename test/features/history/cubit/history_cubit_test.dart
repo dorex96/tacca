@@ -1,5 +1,5 @@
-import 'package:app_palestra/data/entities/workout_log.dart';
-import 'package:app_palestra/features/history/cubit/history_cubit.dart';
+import 'package:tacca/data/entities/workout_log.dart';
+import 'package:tacca/features/history/cubit/history_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/fakes.dart';

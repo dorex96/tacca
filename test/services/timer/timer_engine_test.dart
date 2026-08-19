@@ -1,4 +1,4 @@
-import 'package:app_palestra/services/timer/timer_engine.dart';
+import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 

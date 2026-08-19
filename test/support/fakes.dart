@@ -1,17 +1,17 @@
 import 'dart:async';
 
-import 'package:app_palestra/data/entities/log_entry.dart';
-import 'package:app_palestra/data/entities/log_set.dart';
-import 'package:app_palestra/data/entities/workout_day.dart';
-import 'package:app_palestra/data/entities/workout_log.dart';
-import 'package:app_palestra/data/entities/workout_plan.dart';
-import 'package:app_palestra/data/repositories/plan_repository.dart';
-import 'package:app_palestra/data/repositories/settings_repository.dart';
-import 'package:app_palestra/data/repositories/workout_log_repository.dart';
-import 'package:app_palestra/services/feedback/session_feedback.dart';
-import 'package:app_palestra/services/notifications/session_notifier.dart';
-import 'package:app_palestra/services/timer/timer_engine.dart';
-import 'package:app_palestra/services/wakelock/screen_wake.dart';
+import 'package:tacca/data/entities/log_entry.dart';
+import 'package:tacca/data/entities/log_set.dart';
+import 'package:tacca/data/entities/workout_day.dart';
+import 'package:tacca/data/entities/workout_log.dart';
+import 'package:tacca/data/entities/workout_plan.dart';
+import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/data/repositories/settings_repository.dart';
+import 'package:tacca/data/repositories/workout_log_repository.dart';
+import 'package:tacca/services/feedback/session_feedback.dart';
+import 'package:tacca/services/notifications/session_notifier.dart';
+import 'package:tacca/services/timer/timer_engine.dart';
+import 'package:tacca/services/wakelock/screen_wake.dart';
 
 /// Doppi di test condivisi: tengono i test lontani da ObjectBox e dai plugin
 /// di piattaforma, che nei widget test non sono disponibili.

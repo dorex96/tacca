@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:app_palestra/objectbox.g.dart';
+import 'package:tacca/objectbox.g.dart';
 
 // `flutter test` gira sull'host, dove la libreria nativa objectbox NON è
 // inclusa da objectbox_flutter_libs (che la fornisce solo alle build dell'app).

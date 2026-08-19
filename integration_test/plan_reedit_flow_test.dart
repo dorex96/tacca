@@ -1,7 +1,7 @@
-import 'package:app_palestra/app/app.dart';
-import 'package:app_palestra/app/di.dart';
-import 'package:app_palestra/data/db/object_box.dart';
-import 'package:app_palestra/services/ai/model_catalog.dart';
+import 'package:tacca/app/app.dart';
+import 'package:tacca/app/di.dart';
+import 'package:tacca/data/db/object_box.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

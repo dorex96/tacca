@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:app_palestra/core/errors/ai_exception.dart';
-import 'package:app_palestra/data/entities/block.dart';
-import 'package:app_palestra/services/ai/ai_provider.dart';
-import 'package:app_palestra/services/ai/model_catalog.dart';
-import 'package:app_palestra/services/ai/providers/open_router_provider.dart';
+import 'package:tacca/core/errors/ai_exception.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/services/ai/ai_provider.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
+import 'package:tacca/services/ai/providers/open_router_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

@@ -1,8 +1,8 @@
-import 'package:app_palestra/data/entities/log_entry.dart';
-import 'package:app_palestra/data/entities/workout_log.dart';
-import 'package:app_palestra/features/history/cubit/history_detail_cubit.dart';
-import 'package:app_palestra/features/history/pages/history_detail_page.dart';
-import 'package:app_palestra/l10n/app_localizations.dart';
+import 'package:tacca/data/entities/log_entry.dart';
+import 'package:tacca/data/entities/workout_log.dart';
+import 'package:tacca/features/history/cubit/history_detail_cubit.dart';
+import 'package:tacca/features/history/pages/history_detail_page.dart';
+import 'package:tacca/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';

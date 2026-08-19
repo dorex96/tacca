@@ -1,4 +1,4 @@
-import 'package:app_palestra/objectbox.g.dart';
+import 'package:tacca/objectbox.g.dart';
 
 import '../entities/block.dart';
 import '../entities/exercise.dart';
