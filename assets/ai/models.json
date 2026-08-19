@@ -1,6 +1,6 @@
 {
   "_comment": "Catalogo dei modelli OpenRouter selezionabili nelle Impostazioni AI. Modifica questo file per cambiare i modelli offerti all'utente: 'id' è l'identificatore OpenRouter (https://openrouter.ai/models), 'label' il nome mostrato in UI, 'supportsVision' indica se il modello accetta immagini (richiesto per l'import da foto; se false le foto passano prima per l'OCR on-device e solo il testo arriva al modello), 'supportsJsonSchema' se supporta response_format json_schema (altrimenti si usa il fallback prompt-based), 'maxOutputTokens' il budget di output della singola risposta (opzionale, default 8192): tenerlo alto evita schede troncate, ma un budget enorme allunga di molto una generazione che va in loop. 'disableReasoning' (opzionale, default false) manda 'reasoning: {effort: none}': sui modelli reasoning il pensiero consuma lo stesso budget di maxOutputTokens e può troncare la scheda prima del JSON, ma qui non serve catena di ragionamento.",
-  "defaultModelId": "google/gemini-3.7-flash",
+  "defaultModelId": "deepseek/deepseek-v4-flash",
   "models": [
     {
       "id": "anthropic/claude-sonnet-5",
