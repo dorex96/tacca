@@ -1,0 +1,392 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:4551942528410355193",
+      "lastPropertyId": "14:8667672205636860870",
+      "name": "Block",
+      "properties": [
+        {
+          "id": "1:7214213798154677827",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3541695366198432998",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "3:5856378768647066786",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "4:56581439845023240",
+          "name": "dbType",
+          "type": 9
+        },
+        {
+          "id": "5:7616641756894546219",
+          "name": "intervalSeconds",
+          "type": 6
+        },
+        {
+          "id": "6:240834521043851088",
+          "name": "totalMinutes",
+          "type": 6
+        },
+        {
+          "id": "7:1213267434223488652",
+          "name": "durationSeconds",
+          "type": 6
+        },
+        {
+          "id": "8:9142720156568796798",
+          "name": "workSeconds",
+          "type": 6
+        },
+        {
+          "id": "9:6663639560711534501",
+          "name": "restSeconds",
+          "type": 6
+        },
+        {
+          "id": "10:5015696239776566214",
+          "name": "rounds",
+          "type": 6
+        },
+        {
+          "id": "11:5493268783529035944",
+          "name": "restBetweenRoundsSeconds",
+          "type": 6
+        },
+        {
+          "id": "12:7037080378668406718",
+          "name": "timeCapSeconds",
+          "type": 6
+        },
+        {
+          "id": "13:1070169446069365381",
+          "name": "freeTextContent",
+          "type": 9
+        },
+        {
+          "id": "14:8667672205636860870",
+          "name": "dayId",
+          "indexId": "1:9171852899594073487",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "WorkoutDay"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:3085023807894859433",
+      "lastPropertyId": "10:3508443319352691500",
+      "name": "Exercise",
+      "properties": [
+        {
+          "id": "1:3007504611161522604",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8372242332032782442",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:2638348589075801492",
+          "name": "sets",
+          "type": 6
+        },
+        {
+          "id": "4:5686459022542903720",
+          "name": "reps",
+          "type": 9
+        },
+        {
+          "id": "5:5064303446147952344",
+          "name": "load",
+          "type": 9
+        },
+        {
+          "id": "6:4082272909906685249",
+          "name": "restSeconds",
+          "type": 6
+        },
+        {
+          "id": "7:5472315124815470009",
+          "name": "durationSeconds",
+          "type": 6
+        },
+        {
+          "id": "8:8529396041088484875",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "9:3910332120596396231",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "10:3508443319352691500",
+          "name": "blockId",
+          "indexId": "2:3747501334892625485",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "Block"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:1772203950264157341",
+      "lastPropertyId": "4:1647792927474797477",
+      "name": "LogEntry",
+      "properties": [
+        {
+          "id": "1:5587001270695468722",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:171325467381172935",
+          "name": "exerciseNameSnapshot",
+          "type": 9
+        },
+        {
+          "id": "3:4347546965795942956",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "4:1647792927474797477",
+          "name": "logId",
+          "indexId": "3:3066395828730240741",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "WorkoutLog"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:1994629704577639240",
+      "lastPropertyId": "7:2535429163366603562",
+      "name": "LogSet",
+      "properties": [
+        {
+          "id": "1:1021821073517254200",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7620849965587181274",
+          "name": "setNumber",
+          "type": 6
+        },
+        {
+          "id": "3:5832607602888271128",
+          "name": "reps",
+          "type": 9
+        },
+        {
+          "id": "4:6470393579558488154",
+          "name": "weightKg",
+          "type": 8
+        },
+        {
+          "id": "5:2583975096845148561",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "6:7530154553218203352",
+          "name": "completedAt",
+          "type": 10
+        },
+        {
+          "id": "7:2535429163366603562",
+          "name": "entryId",
+          "indexId": "4:2098388501504031177",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "LogEntry"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:4004359512548311332",
+      "lastPropertyId": "5:5882228908157476785",
+      "name": "WorkoutDay",
+      "properties": [
+        {
+          "id": "1:861509932063846889",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:9028875722250344889",
+          "name": "label",
+          "type": 9
+        },
+        {
+          "id": "3:8161711055402806562",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "4:8035646465831585133",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "5:5882228908157476785",
+          "name": "planId",
+          "indexId": "5:4403419564865892571",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "WorkoutPlan"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "6:1306774882381359560",
+      "lastPropertyId": "9:509581095140224022",
+      "name": "WorkoutLog",
+      "properties": [
+        {
+          "id": "1:4605364096444461359",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3426619542842698044",
+          "name": "startedAt",
+          "type": 10
+        },
+        {
+          "id": "3:1707587269771063357",
+          "name": "finishedAt",
+          "type": 10
+        },
+        {
+          "id": "4:4401477993986275529",
+          "name": "dbStatus",
+          "type": 9
+        },
+        {
+          "id": "5:9020455812370821776",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "6:8422765782685916699",
+          "name": "planNameSnapshot",
+          "type": 9
+        },
+        {
+          "id": "7:8048107598763405949",
+          "name": "dayLabelSnapshot",
+          "type": 9
+        },
+        {
+          "id": "8:3983415923338269070",
+          "name": "planId",
+          "indexId": "6:844561015017214221",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "WorkoutPlan"
+        },
+        {
+          "id": "9:509581095140224022",
+          "name": "dayId",
+          "indexId": "7:9012700204643947649",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "WorkoutDay"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:7152947336481587335",
+      "lastPropertyId": "9:4577536705169195559",
+      "name": "WorkoutPlan",
+      "properties": [
+        {
+          "id": "1:3438798702313808415",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8317004034111753454",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:8549405271683945438",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "4:372796718540152912",
+          "name": "notes",
+          "type": 9
+        },
+        {
+          "id": "5:1357103835386698641",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "6:1553550029308157730",
+          "name": "updatedAt",
+          "type": 10
+        },
+        {
+          "id": "7:5335540881445734115",
+          "name": "isArchived",
+          "type": 1
+        },
+        {
+          "id": "8:5193639764376450321",
+          "name": "isActive",
+          "type": 1
+        },
+        {
+          "id": "9:4577536705169195559",
+          "name": "imagePaths",
+          "type": 30
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "7:7152947336481587335",
+  "lastIndexId": "7:9012700204643947649",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

@@ -1,0 +1,49 @@
+{
+  "_comment": "Catalogo dei modelli OpenRouter selezionabili nelle Impostazioni AI. Modifica questo file per cambiare i modelli offerti all'utente: 'id' è l'identificatore OpenRouter (https://openrouter.ai/models), 'label' il nome mostrato in UI, 'supportsVision' indica se il modello accetta immagini (richiesto per l'import da foto; se false le foto passano prima per l'OCR on-device e solo il testo arriva al modello), 'supportsJsonSchema' se supporta response_format json_schema (altrimenti si usa il fallback prompt-based), 'maxOutputTokens' il budget di output della singola risposta (opzionale, default 8192): tenerlo alto evita schede troncate, ma un budget enorme allunga di molto una generazione che va in loop. 'disableReasoning' (opzionale, default false) manda 'reasoning: {effort: none}': sui modelli reasoning il pensiero consuma lo stesso budget di maxOutputTokens e può troncare la scheda prima del JSON, ma qui non serve catena di ragionamento.",
+  "defaultModelId": "google/gemini-3.7-flash",
+  "models": [
+    {
+      "id": "anthropic/claude-sonnet-5",
+      "label": "Claude Sonnet 5",
+      "supportsVision": true,
+      "supportsJsonSchema": true,
+      "maxOutputTokens": 50000
+    },
+    {
+      "id": "google/gemini-3.7-flash",
+      "label": "Gemini 3.7 Flash",
+      "supportsVision": true,
+      "_supportsJsonSchema": "Disattivato di proposito: sotto response_format json_schema strict questo modello degenera (loop di cifre dentro un intero, scheda amputata). Senza grammatica vincolata risponde correttamente e il JSON viene estratto dal blocco ```json.",
+      "supportsJsonSchema": false,
+      "maxOutputTokens": 50000
+    },
+    {
+      "id": "deepseek/deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "supportsVision": false,
+      "supportsJsonSchema": true,
+      "maxOutputTokens": 50000
+    },
+    {
+      "id": "google/gemma-4-31b-it:free",
+      "label": "Gemma 4 31b It (free)",
+      "supportsVision": false,
+      "supportsJsonSchema": true,
+      "maxOutputTokens": 50000
+    },
+    {
+      "id": "google/gemma-4-26b-a4b-it:free",
+      "label": "Gemma 4 26b A4B It (free)",
+      "supportsVision": false,
+      "supportsJsonSchema": true,
+      "maxOutputTokens": 50000
+    },
+    {
+      "id": "dots-studio/dots-3-note-preview:free",
+      "label": "Dots 3 Note Preview (free)",
+      "supportsVision": false,
+      "supportsJsonSchema": true,
+      "maxOutputTokens": 50000
+    }
+  ]
+}
