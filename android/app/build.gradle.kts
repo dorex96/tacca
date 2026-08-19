@@ -43,18 +43,30 @@ android {
         versionName = flutter.versionName
     }
 
+    // `key.properties` non è versionato (contiene le credenziali del keystore):
+    // la configurazione di firma viene creata solo se il file c'è, altrimenti
+    // la fase di configurazione di Gradle fallirebbe su un clone pulito e
+    // nemmeno `flutter run` in debug partirebbe.
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // Ripiego sulla chiave di debug: la release compila e si
+                // installa in locale, ma NON è distribuibile.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
