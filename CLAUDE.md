@@ -50,11 +50,22 @@ Enforced rules:
 **Folder layout** (feature-first presentation, shared `data/` layer): `app/`, `core/`, `data/` (db, entities, repositories), `services/` (ai, timer, notifications, images), `features/` (plans, ai_import, workout, history, settings). No barrel files — use direct imports. Files `snake_case.dart`; suffixes `*Cubit`, `*Bloc`, `*Repository`, `*Page`, `*Dto`.
 
 ### Design system
-Tutto ciò che è "aspetto" vive in due posti, mai nelle pagine:
-- `lib/app/theme.dart` — Material 3 da un solo seed color, con i temi di **tutti** i componenti (app bar, card, campi, pulsanti, chip, bottom sheet, dialog, nav bar, snackbar). Le pagine non passano `border:`, `elevation:` o raggi a mano. Nota tecnica dentro il file: gli stili dei component theme vanno costruiti da `Typography.material2021(...)`, perché `ThemeData` fonde le **dimensioni** tipografiche solo dentro `textTheme` (uno stile preso da `ThemeData(...).textTheme` arriverebbe senza `fontSize`).
-- `lib/core/design/` — token di spaziatura (`AppSpacing`, griglia a 8 punti) e raggi (`AppRadius`). Niente numeri "a occhio" nei widget.
+L'aspetto viene da un file di design ("Gym full figma"), non da un seed color Material, e vive in due posti soli — mai nelle pagine:
 
-I pezzi ricorrenti stanno in `lib/core/widgets/`: `EmptyState` (stati vuoti e "non trovato"), `SectionHeader`, `MetaChip` (dati secondari, al posto delle stringhe unite da " · "), `InfoBanner` (avvisi/privacy/errori) e `showConfirmDialog` (ogni conferma, con `destructive: true` per le eliminazioni). Vincolo UX di riferimento: RNF-04 — target tappabili ≥ 48dp (già imposto dal tema), alto contrasto, leggibilità a distanza.
+- `lib/app/theme.dart` — i temi di **tutti** i componenti (app bar, card, campi, pulsanti, chip, bottom sheet, dialog, menu, snackbar), costruiti dai token. Le pagine non passano `border:`, `elevation:`, colori o raggi a mano. Nota tecnica dentro il file: gli stili dei component theme vanno costruiti da `AppTypography` e mai ripresi da `ThemeData(...).textTheme`, perché `ThemeData` fonde le **dimensioni** tipografiche solo dentro `textTheme` (uno stile preso da lì arriverebbe senza `fontSize`).
+- `lib/core/design/` — `AppColors`, `AppTypography`, `AppRadius`, `AppSpacing`, `AppChrome` (ombre + barre di sistema) e `linear_icons.dart`.
+
+**Un tema solo.** La palette disegnata è una: `themeMode` è bloccato su chiaro in `app.dart`. Un tema scuro sarebbe una seconda interfaccia inventata a mano.
+
+**Palette.** Fondo `#F4F4F6`; superfici bianche raggio 26; inchiostro `#192126`; prosa `#232A3A`; secondario `#8C9092`; contorni `#D4D8E0`; accento lime `#BBF246` — sopra il lime il testo è **sempre** inchiostro. Regola non negoziabile: **un solo elemento lime per schermata** (la scheda in uso, l'esercizio corrente, la tab attiva). È l'intero meccanismo con cui si legge "cosa è vivo adesso": il secondo lime annulla il primo. Il rosa `#FF5678` è il distruttivo e compare come *testo* (voci di menu, "Rimuovi serie") ovunque tranne che nella conferma finale di eliminazione, l'unico punto in cui diventa un fondo.
+
+**Tipografia.** Lato per l'interfaccia, carattere di sistema per i paragrafi (un paragrafo lungo in Lato serrato non si legge: i token `paragraph`/`paragraphSmall`/`caption` lasciano `fontFamily` a null apposta, e `ThemeData.fontFamily` non va mai impostato). Google Fonts pubblica Lato solo in 400/700/900: i pesi 500 e 800 nominati dal design non esistono, quindi i token usano quelli veri.
+
+**Icone.** Solo i glifi del set "Linear Icons" del file di design, in `AppIcons`, disegnati da `LinearIcon` a partire dai tracciati SVG. Niente `Icons.*` nell'interfaccia: la griglia ottica di Material accanto a queste forme si vede. Se manca un glifo si prende dal file di design, non si sostituisce con un Material.
+
+**Impaginato.** Niente `AppBar`: `AppScaffold` disegna la testata (pulsanti icona quadrati 40 su bersaglio 48), il titolo Lato Black 24 nel contenuto e la pillola dell'azione principale agganciata in fondo (`dock`) al posto del FAB. La tab bar flottante (`HomeTabBar`, 340×56) la disegna la shell del router in uno `Stack`, non `bottomNavigationBar` — perciò i bottom sheet **devono** aprirsi sul navigator radice (`showAppSheet` lo fa già), altrimenti finiscono sotto la barra. Le liste lasciano in fondo `dockClearance` / `actionClearance` / `tabBarClearance` a seconda di cosa ci galleggia sopra.
+
+I pezzi ricorrenti stanno in `lib/core/widgets/`: `AppScaffold` + `AppDock`, `PillButton` (l'unico pulsante grande), `SquareIconButton`/`GhostIconButton`, `SurfaceCard`, `MetaChip` (dati secondari, al posto delle stringhe unite da " · "), `Section`/`SectionHeader`, `EmptyState`, `InfoBanner`, `AppSheet`/`showAppSheet` + `SheetOption`, `AppField` (le due sole forme di campo) + `LabeledField`, `AppMenuButton`/`appMenuItem` e `showConfirmDialog` (ogni conferma, con `destructive: true` per le eliminazioni). Vincolo UX di riferimento: RNF-04 — target tappabili ≥ 48dp anche dove il design ne disegna 40 (`SquareIconButton` dipinge 40 dentro 48 apposta), alto contrasto, leggibilità a distanza.
 
 ### State management convention
 **Cubit for CRUD/list/form; Bloc only where flow is genuinely event-driven.** The one Bloc is `WorkoutSessionBloc` (workout session): its inputs come from the user, `TimerEngine`, and app lifecycle, and event order matters. Critical rule there — **autosave on every state-mutating handler** (persist the `WorkoutLog` immediately; this is how the crash-recovery requirement RF-06 is met, not periodic saves). Never `emit` from external callbacks; the Bloc subscribes to `TimerEngine.stream` and re-dispatches as `TimerTicked`.
@@ -82,6 +93,8 @@ Notes that bite:
 - ObjectBox repository tests run on the host only because `lib/libobjectbox.dylib` is present; `objectBoxNativeLibSkipReason()` skips them otherwise.
 - Localized dates go through `DateFormat`, so tests touching them need `initializeDateFormatting('it')` in `setUpAll` (production does it in `main()`).
 - Widget tests that mount a session must inject a `TimerEngine` with a long `tickInterval`, otherwise the periodic timer keeps scheduling frames and `pumpAndSettle` never settles.
+- Session cards are as tall as the design draws them: in the default 800×600 window a `ListView` never builds the second exercise of a superset. Tests that assert on it raise the window (`tester.view.physicalSize` + `addTearDown(tester.view.reset)`).
+- Tests no longer look for Material icons: set checkmarks carry the key `set-toggle-<label>`, tab bar destinations `home-tab-<label>`, and icon actions are found by tooltip.
 
 ## Milestone order
 

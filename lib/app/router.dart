@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/design/app_colors.dart';
+import '../core/design/linear_icons.dart';
+import '../core/widgets/app_scaffold.dart';
+import '../core/widgets/confirm_dialog.dart';
+import '../core/widgets/home_tab_bar.dart';
 import '../data/entities/workout_log.dart';
 import '../data/repositories/plan_repository.dart';
 import '../data/repositories/settings_repository.dart';
@@ -202,8 +207,9 @@ WorkoutSessionBloc _createSessionBloc(BuildContext context) {
   );
 }
 
-/// Scaffold radice con la bottom navigation. Il corpo è lo `IndexedStack`
-/// dei rami; toccare una destinazione cambia ramo (ri-tap = pop allo stack root).
+/// Radice delle tre schermate della shell: il corpo è lo `IndexedStack` dei
+/// rami e sopra ci galleggia la tab bar del restyling (toccare una
+/// destinazione cambia ramo, ri-tap = pop allo stack root).
 ///
 /// È anche il punto in cui, dopo il primo frame, si verifica se esiste una
 /// sessione rimasta aperta da riprendere (§8).
@@ -235,30 +241,35 @@ class _HomeShellState extends State<_HomeShell> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    // La tab bar del restyling galleggia *sopra* il contenuto: sta nello
+    // Stack della shell, non in `bottomNavigationBar`, e le pagine le
+    // lasciano spazio in fondo alle liste (AppSpacing.tabBarClearance).
     return Scaffold(
-      body: BlocListener<ResumeSessionCubit, WorkoutLog?>(
-        listenWhen: (previous, current) => previous == null && current != null,
-        listener: (context, log) => _askToResume(context, l10n, log!),
-        child: widget.navigationShell,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: widget.navigationShell.currentIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.fitness_center_outlined),
-            selectedIcon: const Icon(Icons.fitness_center),
-            label: l10n.navPlans,
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          BlocListener<ResumeSessionCubit, WorkoutLog?>(
+            listenWhen: (previous, current) =>
+                previous == null && current != null,
+            listener: (context, log) => _askToResume(context, l10n, log!),
+            child: widget.navigationShell,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.history_outlined),
-            selectedIcon: const Icon(Icons.history),
-            label: l10n.navHistory,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            selectedIcon: const Icon(Icons.settings),
-            label: l10n.navSettings,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AppDock(
+              child: HomeTabBar(
+                currentIndex: widget.navigationShell.currentIndex,
+                onSelected: _onDestinationSelected,
+                tabs: [
+                  HomeTab(icon: AppIcons.noteAdd, label: l10n.navPlans),
+                  HomeTab(icon: AppIcons.calendar, label: l10n.navHistory),
+                  HomeTab(icon: AppIcons.settings, label: l10n.navSettings),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -271,32 +282,20 @@ class _HomeShellState extends State<_HomeShell> {
     WorkoutLog log,
   ) async {
     final cubit = context.read<ResumeSessionCubit>();
-    final resume = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.workoutResumeTitle),
-        content: Text(
-          l10n.workoutResumeBody(
-            log.planNameSnapshot,
-            log.dayLabelSnapshot,
-            log.startedAt,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.workoutResumeDismiss),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.workoutResumeConfirm),
-          ),
-        ],
+    final resume = await showConfirmDialog(
+      context,
+      title: l10n.workoutResumeTitle,
+      message: l10n.workoutResumeBody(
+        log.planNameSnapshot,
+        log.dayLabelSnapshot,
+        log.startedAt,
       ),
+      confirmLabel: l10n.workoutResumeConfirm,
+      cancelLabel: l10n.workoutResumeDismiss,
     );
 
     cubit.dismiss();
-    if ((resume ?? false) && context.mounted) {
+    if (resume && context.mounted) {
       context.push('/workout/${log.id}');
     }
   }

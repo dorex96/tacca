@@ -1,38 +1,43 @@
 import 'package:flutter/widgets.dart';
 
-/// Griglia a 8 punti (con mezzo passo a 4 e 12): ogni margine, padding e
-/// distanza dell'app esce da qui.
+/// Griglia a 4 punti: ogni margine, padding e distanza dell'app esce da qui.
 ///
-/// Serve a una cosa sola: che due schermate diverse abbiano lo stesso ritmo
-/// verticale. I numeri "a occhio" sparsi nei widget sono la prima causa di
-/// interfacce che sembrano montate da persone diverse.
+/// Il ritmo del restyling è tre distanze e basta: **8** fra righe dello
+/// stesso elenco, **12** fra una label e il gruppo che introduce, **24** fra
+/// gruppi distinti. Il resto sono padding interni dei componenti.
 abstract final class AppSpacing {
   /// 4 — distanza fra elementi della stessa riga (icona/testo, testo/testo).
   static const double xs = 4;
 
-  /// 8 — distanza fra elementi vicini dello stesso gruppo.
+  /// 8 — righe consecutive di uno stesso elenco.
   static const double sm = 8;
 
-  /// 12 — distanza fra campi di uno stesso form.
+  /// 12 — label di sezione → gruppo che introduce.
   static const double md = 12;
 
-  /// 16 — margine standard del contenuto rispetto al bordo dello schermo.
+  /// 16 — padding interno "stretto" (banner, celle).
   static const double lg = 16;
 
-  /// 24 — stacco fra gruppi distinti nella stessa schermata.
+  /// 20 — padding interno delle card e delle righe bianche.
+  static const double card = 20;
+
+  /// 24 — inset del contenuto rispetto al bordo dello schermo, e stacco fra
+  /// gruppi distinti nella stessa schermata.
   static const double xl = 24;
 
-  /// 32 — stacco fra sezioni.
-  static const double xxl = 32;
+  /// 40 — stacco fra sezioni molto diverse.
+  static const double xxl = 40;
 
-  /// Spazio libero in fondo alle liste con FAB esteso, perché l'ultimo
-  /// elemento resti raggiungibile e non finisca sotto il pulsante.
-  static const double fabClearance = 96;
+  /// Spazio libero in fondo alle liste sormontate dal pulsante pillola e
+  /// dalla tab bar flottante, perché l'ultimo elemento resti raggiungibile.
+  static const double dockClearance = 168;
 
-  /// Padding di pagina per i contenuti a piena larghezza.
-  static const EdgeInsets pageInsets = EdgeInsets.all(lg);
+  /// Come [dockClearance] ma senza tab bar (pagine fuori dalla shell).
+  static const double actionClearance = 120;
 
-  /// Padding di pagina per le liste: stesso margine laterale, più aria in
-  /// fondo per l'ultimo elemento.
-  static const EdgeInsets listInsets = EdgeInsets.fromLTRB(lg, lg, lg, xxl);
+  /// Spazio in fondo alle liste che hanno sotto solo la tab bar flottante.
+  static const double tabBarClearance = 96;
+
+  /// Inset laterale del contenuto: 24 su entrambi i lati.
+  static const EdgeInsets pageInsets = EdgeInsets.symmetric(horizontal: xl);
 }

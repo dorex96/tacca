@@ -87,7 +87,7 @@ The UI never touches a repository or a service directly; a Cubit never touches `
 ```
 lib/
   app/        composition root, router, theme
-  core/       design tokens, shared widgets, errors, extensions
+  core/       design tokens (colour, type, radius, spacing, icons), shared widgets
   data/       ObjectBox store, entities, repositories
   features/   plans · ai_import · workout · history · settings
   services/   ai · timer · notifications · images (OCR) · feedback · wakelock
@@ -100,7 +100,11 @@ Decisions worth knowing before you read the code:
 - **ObjectBox does not cascade updates**, so repositories walk the object tree, `put` every child explicitly, and delete the ids that disappeared. That is what makes the editor and the session autosave actually persist.
 - **`ToMany` does not preserve order**, so every child carries an `int sortOrder` and repositories return already-sorted lists. Enums are persisted as strings.
 - **One AI pipeline, in `plan_parser.dart`**: extract JSON → decode → validate → normalize → one automatic retry with the validation error fed back to the model → free-text fallback. Normalization exists because models emit one block per exercise while a block is a *grouping*.
-- **Appearance lives in two places only** — `lib/app/theme.dart` (Material 3 from a single seed, every component theme) and `lib/core/design/` (spacing and radius tokens). Pages pass no hand-written elevations, radii or paddings; user-facing strings go through the ARB file, never inline.
+- **Appearance lives in two places only** — `lib/app/theme.dart` (every component theme) and `lib/core/design/` (colour, spacing, radius, typography and icon tokens). Pages pass no hand-written colours, radii or paddings; user-facing strings go through the ARB file, never inline.
+- **One visual language, one theme.** The look comes from a design file, not from a Material seed colour: near-white background, white cards at radius 26, ink `#192126`, a single lime accent `#BBF246` reserved for the one live thing on screen (the plan in use, the current exercise, the active tab). Lato for the interface, the platform font for prose. There is deliberately no dark theme — it was never designed — so `themeMode` is pinned to light.
+- **Icons are drawn, not fonted.** `lib/core/design/linear_icons.dart` holds the real glyphs of the design's icon set as SVG path data, painted by `LinearIcon`. Material icons are not used in the UI: their optical grid is visibly foreign next to these shapes.
+
+The visual design (colours, typography scale, icon set, layout) is adapted from the free [Gym Full](https://www.figma.com/community/file/1415305484748482666/gym-full-figma) Figma community file.
 
 ## Testing
 

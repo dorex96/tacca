@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart' hide Block;
 
-import '../../../core/design/app_radius.dart';
+import '../../../core/block_type_labels.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_menu.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/info_banner.dart';
 import '../../../core/widgets/meta_chip.dart';
+import '../../../core/widgets/pill_button.dart';
+import '../../../core/widgets/square_icon_button.dart';
 import '../../../data/entities/block.dart';
 import '../../../data/entities/workout_log.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../core/block_type_labels.dart';
 import '../bloc/block_timer_spec.dart';
 import '../bloc/session_item.dart';
 import '../bloc/workout_session_bloc.dart';
@@ -95,10 +101,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage>
               body: Center(child: CircularProgressIndicator()),
             );
           case WorkoutSessionStatus.notFound:
-            return Scaffold(
-              appBar: AppBar(),
+            return AppScaffold(
+              leading: const AppBackButton(),
               body: EmptyState(
-                icon: Icons.help_outline,
+                icon: AppIcons.search,
                 message: l10n.workoutSessionNotFound,
               ),
             );
@@ -141,7 +147,6 @@ class _SessionScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final bloc = context.read<WorkoutSessionBloc>();
     final items = state.items;
     final log = state.log;
@@ -153,79 +158,81 @@ class _SessionScaffold extends StatelessWidget {
         final leave = await _confirmExit(context, l10n);
         if (leave && context.mounted) Navigator.of(context).pop();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(log?.dayLabelSnapshot ?? ''),
-              Text(
-                l10n.workoutProgress(state.completedExercises, items.length),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+      child: AppScaffold(
+        topSpacing: AppSpacing.md,
+        leading: const AppBackButton(),
+        actions: [
+          PillButton.compact(
+            label: l10n.workoutFinishAction,
+            tone: PillTone.surface,
+            onPressed: () => _finish(context, bloc, l10n),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          AppMenuButton<_SessionMenuAction>(
+            onSelected: (action) => _handleMenu(context, bloc, l10n, action),
+            itemBuilder: (context) => [
+              appMenuCheckItem(
+                value: _SessionMenuAction.toggleAutoRest,
+                label: l10n.workoutAutoRestLabel,
+                checked: state.autoStartRest,
+              ),
+              appMenuItem(
+                value: _SessionMenuAction.abort,
+                label: l10n.workoutAbortAction,
+                destructive: true,
               ),
             ],
           ),
-          // L'avanzamento della sessione è un dato che si consulta di
-          // continuo: una barra sottile lo rende leggibile senza contare.
-          bottom: items.isEmpty
-              ? null
-              : PreferredSize(
-                  preferredSize: const Size.fromHeight(4),
-                  child: LinearProgressIndicator(
-                    value: state.completedExercises / items.length,
-                    minHeight: 4,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  ),
+        ],
+        // Giorno, avanzamento e barra restano fermi in cima: durante
+        // l'allenamento sono i tre dati che si guardano di continuo.
+        header: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            0,
+            AppSpacing.xl,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                log?.dayLabelSnapshot ?? '',
+                style: AppTypography.screenTitle,
+              ),
+              if (items.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l10n.workoutProgress(state.completedExercises, items.length),
+                  style: AppTypography.sectionLabel.copyWith(fontSize: 14),
                 ),
-          actions: [
-            TextButton(
-              onPressed: () => _finish(context, bloc, l10n),
-              child: Text(l10n.workoutFinishAction),
-            ),
-            PopupMenuButton<_SessionMenuAction>(
-              onSelected: (action) => _handleMenu(context, bloc, l10n, action),
-              itemBuilder: (context) => [
-                CheckedPopupMenuItem(
-                  value: _SessionMenuAction.toggleAutoRest,
-                  checked: state.autoStartRest,
-                  child: Text(l10n.workoutAutoRestLabel),
-                ),
-                PopupMenuItem(
-                  value: _SessionMenuAction.abort,
-                  child: Text(l10n.workoutAbortAction),
+                const SizedBox(height: AppSpacing.md),
+                ProgressLine(value: state.completedExercises / items.length),
+              ],
+              if (state.timer case final timer?) ...[
+                const SizedBox(height: AppSpacing.lg),
+                TimerBar(
+                  timer: timer,
+                  onStop: () => bloc.add(const TimerStopped()),
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
-        body: Column(
-          children: [
-            if (state.timer case final timer?)
-              TimerBar(
-                timer: timer,
-                onStop: () => bloc.add(const TimerStopped()),
+        body: items.isEmpty
+            ? EmptyState(
+                icon: AppIcons.noteAdd,
+                message: l10n.workoutNoExercises,
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                ),
+                children: _buildBody(context, bloc, l10n, items),
               ),
-            Expanded(
-              child: items.isEmpty
-                  ? EmptyState(
-                      icon: Icons.self_improvement_outlined,
-                      message: l10n.workoutNoExercises,
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        AppSpacing.xxl,
-                      ),
-                      children: _buildBody(context, bloc, l10n, items),
-                    ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -239,58 +246,71 @@ class _SessionScaffold extends StatelessWidget {
     final widgets = <Widget>[];
 
     if (state.day == null) {
-      widgets.add(_PlanRemovedNotice(message: l10n.workoutPlanRemoved));
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+          child: InfoBanner(message: l10n.workoutPlanRemoved),
+        ),
+      );
     }
 
     for (final block in state.blocks) {
       if (block.type == BlockType.freeText) {
-        widgets.add(_BlockHeader(block: block, state: state));
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(block.freeTextContent ?? ''),
-          ),
-        );
+        widgets
+          ..add(_BlockHeader(block: block, state: state))
+          ..add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+              child: Text(
+                block.freeTextContent ?? '',
+                style: AppTypography.paragraph,
+              ),
+            ),
+          );
         continue;
       }
 
       final blockItems = items
           .where((item) => item.block?.id == block.id)
           .toList();
-      // Superset e circuiti si eseguono insieme: vanno letti come un pezzo
-      // unico, non come esercizi indipendenti messi in fila.
+      // Superset e circuiti si eseguono insieme: la lettera A/B sulla card e
+      // la nota sotto l'intestazione dicono che vanno alternati — nel design
+      // non c'è alcun riquadro attorno al gruppo.
       final grouped =
           (block.type == BlockType.superset ||
               block.type == BlockType.circuit) &&
           blockItems.length > 1;
 
-      final header = _BlockHeader(block: block, state: state, inGroup: grouped);
-      final cards = [
-        for (var i = 0; i < blockItems.length; i++)
-          _card(
-            context,
-            bloc,
-            blockItems[i],
-            groupMarker: grouped ? String.fromCharCode(0x41 + i) : null,
+      widgets.add(_BlockHeader(block: block, state: state, inGroup: grouped));
+      for (var i = 0; i < blockItems.length; i++) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: i == blockItems.length - 1
+                  ? AppSpacing.xl
+                  : AppSpacing.sm,
+            ),
+            child: _card(
+              context,
+              bloc,
+              blockItems[i],
+              groupMarker: grouped ? String.fromCharCode(0x41 + i) : null,
+            ),
           ),
-      ];
-
-      if (grouped) {
-        widgets.add(_BlockGroup(children: [header, ...cards]));
-      } else {
-        widgets
-          ..add(header)
-          ..addAll(cards);
+        );
       }
     }
 
     // Esercizi registrati che non esistono più in scheda: restano in fondo,
     // non vengono mai nascosti (analisi funzionale §9).
-    widgets.addAll(
-      items
-          .where((item) => item.block == null)
-          .map((item) => _card(context, bloc, item)),
-    );
+    for (final item in items.where((item) => item.block == null)) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _card(context, bloc, item),
+        ),
+      );
+    }
 
     return widgets;
   }
@@ -302,29 +322,22 @@ class _SessionScaffold extends StatelessWidget {
     String? groupMarker,
   }) {
     final rest = restTimerSpec(item, label: item.name);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: SessionExerciseCard(
-        key: ValueKey('session-item-${item.index}'),
-        item: item,
-        isCurrent: item.index == state.currentIndex,
-        lastPerformance: state.lastPerformances[item.name],
-        groupMarker: groupMarker,
-        onFocus: () => bloc.add(ExerciseFocused(item.index)),
-        onToggleSet: (setNumber) {
-          if (item.isSetDone(setNumber)) {
-            bloc.add(
-              SetUnchecked(entryIndex: item.index, setNumber: setNumber),
-            );
-          } else {
-            bloc.add(
-              SetCompleted(entryIndex: item.index, setNumber: setNumber),
-            );
-          }
-        },
-        onEditSet: (setNumber) => _editSet(context, bloc, item, setNumber),
-        onStartRest: rest == null ? null : () => bloc.add(TimerRequested(rest)),
-      ),
+    return SessionExerciseCard(
+      key: ValueKey('session-item-${item.index}'),
+      item: item,
+      isCurrent: item.index == state.currentIndex,
+      lastPerformance: state.lastPerformances[item.name],
+      groupMarker: groupMarker,
+      onFocus: () => bloc.add(ExerciseFocused(item.index)),
+      onToggleSet: (setNumber) {
+        if (item.isSetDone(setNumber)) {
+          bloc.add(SetUnchecked(entryIndex: item.index, setNumber: setNumber));
+        } else {
+          bloc.add(SetCompleted(entryIndex: item.index, setNumber: setNumber));
+        }
+      },
+      onEditSet: (setNumber) => _editSet(context, bloc, item, setNumber),
+      onStartRest: rest == null ? null : () => bloc.add(TimerRequested(rest)),
     );
   }
 
@@ -424,78 +437,7 @@ class _SessionScaffold extends StatelessWidget {
   }
 }
 
-/// La scheda collegata non esiste più: la sessione continua, ma va detto
-/// perché non si vedono più esercizi previsti (analisi funzionale §9).
-class _PlanRemovedNotice extends StatelessWidget {
-  const _PlanRemovedNotice({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, color: scheme.onTertiaryContainer),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onTertiaryContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 enum _SessionMenuAction { toggleAutoRest, abort }
-
-/// Riquadro di un gruppo che si esegue a giri (superset, circuito): tiene
-/// insieme intestazione ed esercizi, così si legge come un pezzo unico invece
-/// che come esercizi indipendenti messi in fila.
-class _BlockGroup extends StatelessWidget {
-  const _BlockGroup({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.xl, bottom: AppSpacing.sm),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        0,
-        AppSpacing.sm,
-        AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-}
 
 /// Intestazione di un blocco: tipo, parametri e, dove esiste, il timer che
 /// guida l'esecuzione dell'intero blocco.
@@ -509,14 +451,13 @@ class _BlockHeader extends StatelessWidget {
   final Block block;
   final WorkoutSessionState state;
 
-  /// L'intestazione è dentro il riquadro di un gruppo a giri: la spaziatura
-  /// esterna la mette il riquadro.
+  /// Il blocco si esegue a giri: sotto l'intestazione compare la nota che
+  /// spiega come alternare gli esercizi.
   final bool inGroup;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final spec = blockTimerSpec(block, label: blockTypeLabel(l10n, block.type));
     final rounds = block.rounds;
     final roundRest = block.restBetweenRoundsSeconds;
@@ -537,65 +478,41 @@ class _BlockHeader extends StatelessWidget {
     };
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        inGroup ? AppSpacing.sm : 0,
-        inGroup ? AppSpacing.md : AppSpacing.xl,
-        inGroup ? AppSpacing.sm : 0,
-        AppSpacing.md,
-      ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  blockTypeLabel(l10n, block.type),
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    letterSpacing: 0.6,
-                  ),
-                ),
+              Text(
+                blockTypeLabel(l10n, block.type),
+                style: AppTypography.blockType,
               ),
-              if (spec != null)
-                FilledButton.tonalIcon(
-                  onPressed: () => context.read<WorkoutSessionBloc>().add(
-                    TimerRequested(spec),
-                  ),
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text(l10n.workoutStartBlockTimer),
-                ),
+              for (final param in params)
+                MetaChip(label: param, tone: ChipTone.onBackground),
             ],
           ),
-          if (params.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [for (final param in params) MetaChip(label: param)],
-              ),
+          if (spec != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            PillButton.compact(
+              label: l10n.workoutStartBlockTimer,
+              icon: AppIcons.play,
+              tone: PillTone.outline,
+              onPressed: () =>
+                  context.read<WorkoutSessionBloc>().add(TimerRequested(spec)),
             ),
-          if (hint != null)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(
-                hint,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          if ((block.notes ?? '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(
-                block.notes!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
+          ],
+          if (hint != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(hint, style: AppTypography.paragraphSmall),
+          ],
+          if ((block.notes ?? '').isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(block.notes!, style: AppTypography.paragraphSmall),
+          ],
         ],
       ),
     );

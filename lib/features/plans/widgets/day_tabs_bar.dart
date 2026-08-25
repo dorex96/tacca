@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/confirm_dialog.dart';
+import '../../../core/widgets/linear_icon.dart';
 import '../../../data/entities/workout_day.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/plan_editor_cubit.dart';
@@ -10,7 +15,9 @@ import '../cubit/plan_editor_cubit.dart';
 /// Selettore orizzontale dei giorni, visibile solo per schede multi-giorno
 /// (analisi funzionale §5.1: il giorno singolo è implicito e non compare).
 ///
-/// Tap per selezionare, pressione prolungata per rinominare/rimuovere.
+/// Tap per selezionare, pressione prolungata per rinominare/rimuovere. Il
+/// giorno scelto è una pillola inchiostro: la stessa relazione fra attivo e
+/// non attivo della tab bar dell'app.
 class DayTabsBar extends StatelessWidget {
   const DayTabsBar({
     required this.days,
@@ -26,11 +33,6 @@ class DayTabsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
-    const shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
-    );
 
     return SizedBox(
       height: 48,
@@ -40,39 +42,19 @@ class DayTabsBar extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, i) {
           if (i == days.length) {
-            return ActionChip(
-              avatar: const Icon(Icons.add, size: 18),
-              shape: shape,
-              label: Text(l10n.planEditorAddDay),
-              onPressed: cubit.addDay,
+            return _DayChip(
+              label: l10n.planEditorAddDay,
+              icon: AppIcons.add,
+              selected: false,
+              onTap: cubit.addDay,
             );
           }
           final day = days[i];
-          final selected = i == selectedIndex;
-          return Material(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.surfaceContainerHighest,
-            shape: shape,
-            child: InkWell(
-              customBorder: shape,
-              onTap: () => cubit.selectDay(i),
-              onLongPress: () => _showDayMenu(context, l10n, i, day),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.md,
-                ),
-                child: Text(
-                  day.label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: selected
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
+          return _DayChip(
+            label: day.label,
+            selected: i == selectedIndex,
+            onTap: () => cubit.selectDay(i),
+            onLongPress: () => _showDayMenu(context, l10n, i, day),
           );
         },
       ),
@@ -85,24 +67,23 @@ class DayTabsBar extends StatelessWidget {
     int index,
     WorkoutDay day,
   ) async {
-    final action = await showModalBottomSheet<_DayAction>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(l10n.commonRename),
-              onTap: () => Navigator.of(context).pop(_DayAction.rename),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(l10n.planEditorRemoveDay),
-              onTap: () => Navigator.of(context).pop(_DayAction.remove),
-            ),
-          ],
-        ),
+    final action = await showAppSheet<_DayAction>(
+      context,
+      builder: (context) => AppSheet(
+        title: day.label,
+        children: [
+          SheetOption(
+            icon: AppIcons.pencil,
+            title: l10n.commonRename,
+            onTap: () => Navigator.of(context).pop(_DayAction.rename),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SheetOption(
+            icon: AppIcons.trash,
+            title: l10n.planEditorRemoveDay,
+            onTap: () => Navigator.of(context).pop(_DayAction.remove),
+          ),
+        ],
       ),
     );
 
@@ -121,27 +102,11 @@ class DayTabsBar extends StatelessWidget {
     int index,
     String currentLabel,
   ) async {
-    final controller = TextEditingController(text: currentLabel);
-    final newLabel = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.planEditorRenameDayTitle),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: l10n.planEditorDayLabel),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(l10n.commonSave),
-          ),
-        ],
-      ),
+    final newLabel = await showTextInputDialog(
+      context,
+      title: l10n.planEditorRenameDayTitle,
+      label: l10n.planEditorDayLabel,
+      initialValue: currentLabel,
     );
     if (newLabel != null && newLabel.isNotEmpty) {
       cubit.updateDayLabel(index, newLabel);
@@ -164,6 +129,53 @@ class DayTabsBar extends StatelessWidget {
     if (confirmed) {
       cubit.removeDay(index);
     }
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.onLongPress,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final LinearIconData? icon;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? AppColors.surface : AppColors.ink;
+
+    return Material(
+      color: selected ? AppColors.ink : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.card),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                LinearIcon(icon!, size: 18, color: foreground),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              Text(
+                label,
+                style: AppTypography.buttonSmall.copyWith(color: foreground),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

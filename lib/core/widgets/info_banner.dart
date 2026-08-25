@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../design/app_radius.dart';
+import '../design/app_colors.dart';
 import '../design/app_spacing.dart';
+import '../design/app_typography.dart';
+import '../design/linear_icons.dart';
+import 'linear_icon.dart';
+import 'square_icon_button.dart';
+import 'surface_card.dart';
 
 /// Tono di un [InfoBanner]: informativo (avvisi, spiegazioni) oppure di
 /// attenzione (errori, funzioni non disponibili).
@@ -15,14 +20,14 @@ enum InfoBannerTone { neutral, alert }
 class InfoBanner extends StatelessWidget {
   const InfoBanner({
     required this.message,
-    this.icon = Icons.info_outline,
+    this.icon = AppIcons.info,
     this.tone = InfoBannerTone.neutral,
     this.onDismiss,
     super.key,
   });
 
   final String message;
-  final IconData icon;
+  final LinearIconData icon;
   final InfoBannerTone tone;
 
   /// Quando presente, aggiunge la X per chiudere il riquadro.
@@ -30,45 +35,35 @@ class InfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final alert = tone == InfoBannerTone.alert;
+    final background = alert ? AppColors.dangerSurface : AppColors.surface;
+    final foreground = alert ? AppColors.danger : AppColors.muted;
 
-    final background = alert
-        ? scheme.errorContainer
-        : scheme.surfaceContainerHighest;
-    final foreground = alert
-        ? scheme.onErrorContainer
-        : scheme.onSurfaceVariant;
-
-    return Container(
+    return SurfaceCard(
+      color: background,
       padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        onDismiss == null ? AppSpacing.md : AppSpacing.xs,
-        AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        AppSpacing.card,
+        AppSpacing.lg,
+        onDismiss == null ? AppSpacing.card : AppSpacing.xs,
+        AppSpacing.lg,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: foreground),
+          LinearIcon(icon, size: 20, color: foreground),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
               message,
-              style: theme.textTheme.bodyMedium?.copyWith(color: foreground),
+              style: AppTypography.paragraph.copyWith(
+                color: alert ? AppColors.danger : AppColors.body,
+              ),
             ),
           ),
           if (onDismiss != null)
-            IconButton(
-              icon: const Icon(Icons.close),
-              iconSize: 20,
-              color: foreground,
-              visualDensity: VisualDensity.compact,
+            GhostIconButton(
+              icon: AppIcons.close,
+              foreground: foreground,
               onPressed: onDismiss,
             ),
         ],

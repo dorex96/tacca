@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/square_icon_button.dart';
 import '../../../data/entities/exercise.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Riga di editing per un [Exercise]: tutti i campi tranne il nome sono
 /// opzionali (analisi funzionale §5.1).
 ///
-/// I campi di un esercizio stanno in un riquadro proprio: in un blocco con
-/// sei esercizi, senza contenitore non si capisce dove finisce uno e inizia
-/// il successivo.
+/// I campi di un esercizio stanno in un riquadro grigio dentro la card
+/// bianca del blocco: in un blocco con sei esercizi, senza contenitore non si
+/// capisce dove finisce uno e inizia il successivo.
 class ExerciseTile extends StatelessWidget {
   const ExerciseTile({
     required this.exercise,
@@ -40,23 +45,29 @@ class ExerciseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final instanceKey = identityHashCode(exercise);
 
+    // Dentro il riquadro grigio i campi tornano bianchi: è il contrasto che
+    // li fa leggere come campi e non come testo.
     Widget numberField({
       required String tag,
       required String label,
       required int? value,
       required ValueChanged<int?> onChanged,
+      double width = 128,
     }) {
       return SizedBox(
-        width: 128,
-        child: TextFormField(
-          key: ValueKey('ex-$tag-$instanceKey'),
-          initialValue: value?.toString() ?? '',
-          decoration: InputDecoration(labelText: label),
-          keyboardType: TextInputType.number,
-          onChanged: (v) => onChanged(int.tryParse(v)),
+        width: width,
+        child: LabeledField(
+          label: label,
+          child: TextFormField(
+            key: ValueKey('ex-$tag-$instanceKey'),
+            initialValue: value?.toString() ?? '',
+            style: AppTypography.row,
+            decoration: AppField.onBackground(),
+            keyboardType: TextInputType.number,
+            onChanged: (v) => onChanged(int.tryParse(v)),
+          ),
         ),
       );
     }
@@ -70,11 +81,15 @@ class ExerciseTile extends StatelessWidget {
     }) {
       return SizedBox(
         width: width,
-        child: TextFormField(
-          key: ValueKey('ex-$tag-$instanceKey'),
-          initialValue: value,
-          decoration: InputDecoration(labelText: label),
-          onChanged: onChanged,
+        child: LabeledField(
+          label: label,
+          child: TextFormField(
+            key: ValueKey('ex-$tag-$instanceKey'),
+            initialValue: value,
+            style: AppTypography.row,
+            decoration: AppField.onBackground(),
+            onChanged: onChanged,
+          ),
         ),
       );
     }
@@ -85,10 +100,10 @@ class ExerciseTile extends StatelessWidget {
         AppSpacing.md,
         AppSpacing.md,
         AppSpacing.sm,
-        AppSpacing.md,
+        AppSpacing.lg,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
+        color: AppColors.fill,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
@@ -98,80 +113,85 @@ class ExerciseTile extends StatelessWidget {
             children: [
               ReorderableDragStartListener(
                 index: index,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: Icon(
-                    Icons.drag_handle,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                child: const GhostIconSurface(
+                  icon: AppIcons.lines,
+                  foreground: AppColors.muted,
                 ),
               ),
               Expanded(
-                child: TextFormField(
-                  key: ValueKey('ex-name-$instanceKey'),
-                  initialValue: exercise.name,
-                  decoration: InputDecoration(
-                    labelText: l10n.planEditorExerciseNameLabel,
+                child: LabeledField(
+                  label: l10n.planEditorExerciseNameLabel,
+                  child: TextFormField(
+                    key: ValueKey('ex-name-$instanceKey'),
+                    initialValue: exercise.name,
+                    style: AppTypography.row,
+                    decoration: AppField.onBackground(),
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: onNameChanged,
                   ),
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: onNameChanged,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
+              GhostIconButton(
+                icon: AppIcons.trash,
                 tooltip: l10n.planEditorRemoveExercise,
+                foreground: AppColors.muted,
                 onPressed: onRemove,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.md,
-            children: [
-              numberField(
-                tag: 'sets',
-                label: l10n.planEditorExerciseSetsLabel,
-                value: exercise.sets,
-                onChanged: onSetsChanged,
-              ),
-              textField(
-                tag: 'reps',
-                label: l10n.planEditorExerciseRepsLabel,
-                value: exercise.reps ?? '',
-                onChanged: onRepsChanged,
-                width: 128,
-              ),
-              textField(
-                tag: 'load',
-                label: l10n.planEditorExerciseLoadLabel,
-                value: exercise.load ?? '',
-                onChanged: onLoadChanged,
-              ),
-              numberField(
-                tag: 'rest',
-                label: l10n.planEditorExerciseRestLabel,
-                value: exercise.restSeconds,
-                onChanged: onRestChanged,
-              ),
-              numberField(
-                tag: 'duration',
-                label: l10n.planEditorExerciseDurationLabel,
-                value: exercise.durationSeconds,
-                onChanged: onDurationChanged,
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.xs),
-            child: TextFormField(
-              key: ValueKey('ex-notes-$instanceKey'),
-              initialValue: exercise.notes ?? '',
-              decoration: InputDecoration(
-                labelText: l10n.planEditorExerciseNotesLabel,
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.md,
+              children: [
+                numberField(
+                  tag: 'sets',
+                  label: l10n.planEditorExerciseSetsLabel,
+                  value: exercise.sets,
+                  onChanged: onSetsChanged,
+                ),
+                textField(
+                  tag: 'reps',
+                  label: l10n.planEditorExerciseRepsLabel,
+                  value: exercise.reps ?? '',
+                  onChanged: onRepsChanged,
+                  width: 128,
+                ),
+                textField(
+                  tag: 'load',
+                  label: l10n.planEditorExerciseLoadLabel,
+                  value: exercise.load ?? '',
+                  onChanged: onLoadChanged,
+                ),
+                numberField(
+                  tag: 'rest',
+                  label: l10n.planEditorExerciseRestLabel,
+                  value: exercise.restSeconds,
+                  onChanged: onRestChanged,
+                ),
+                numberField(
+                  tag: 'duration',
+                  label: l10n.planEditorExerciseDurationLabel,
+                  value: exercise.durationSeconds,
+                  onChanged: onDurationChanged,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
+            child: LabeledField(
+              label: l10n.planEditorExerciseNotesLabel,
+              child: TextFormField(
+                key: ValueKey('ex-notes-$instanceKey'),
+                initialValue: exercise.notes ?? '',
+                style: AppTypography.paragraph.copyWith(color: AppColors.ink),
+                decoration: AppField.onBackground(),
+                onChanged: onNotesChanged,
               ),
-              onChanged: onNotesChanged,
             ),
           ),
         ],

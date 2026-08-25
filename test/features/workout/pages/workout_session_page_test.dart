@@ -72,6 +72,13 @@ void main() {
   });
 
   Future<void> pumpSession(WidgetTester tester, {int dayId = 10}) async {
+    // Le card della sessione sono alte quanto quelle del design: sulla
+    // finestra di default (800×600) la lista non costruirebbe il secondo
+    // esercizio di un superset e le asserzioni non lo troverebbero.
+    tester.view.physicalSize = const Size(1200, 4800);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -143,7 +150,7 @@ void main() {
     await pumpSession(tester, dayId: 11);
 
     // Primo esercizio: si incatena subito al secondo, nessun countdown.
-    await tester.tap(find.byIcon(Icons.radio_button_unchecked).first);
+    await tester.tap(find.byKey(const ValueKey('set-toggle-Giro 1')).first);
     await tester.pumpAndSettle();
     expect(find.text('Ferma'), findsNothing);
 
@@ -151,7 +158,7 @@ void main() {
     final secondExercise = find
         .descendant(
           of: find.byKey(const ValueKey('session-item-1')),
-          matching: find.byIcon(Icons.radio_button_unchecked),
+          matching: find.byKey(const ValueKey('set-toggle-Giro 1')),
         )
         .first;
     await tester.ensureVisible(secondExercise);
@@ -166,10 +173,11 @@ void main() {
   ) async {
     await pumpSession(tester);
 
-    await tester.tap(find.byIcon(Icons.radio_button_unchecked).first);
+    await tester.tap(find.byKey(const ValueKey('set-toggle-Serie 1')).first);
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    // La spunta è registrata: lo dice il contatore della card.
+    expect(find.text('1/2 serie'), findsOneWidget);
     // La barra del timer di recupero compare con il countdown a 2 minuti.
     expect(find.text('02:00'), findsOneWidget);
     expect(find.text('Ferma'), findsOneWidget);
@@ -209,7 +217,7 @@ void main() {
   ) async {
     await pumpSession(tester);
 
-    await tester.tap(find.byIcon(Icons.radio_button_unchecked).first);
+    await tester.tap(find.byKey(const ValueKey('set-toggle-Serie 1')).first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Termina'));

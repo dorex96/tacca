@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../design/app_colors.dart';
 import '../design/app_spacing.dart';
+import '../design/app_typography.dart';
+import '../design/linear_icons.dart';
+import 'linear_icon.dart';
 
-/// Stato vuoto uniforme: icona, messaggio e — quando esiste una sola cosa
-/// sensata da fare — l'azione che lo risolve.
+/// Stato vuoto uniforme: disco bianco con l'icona, messaggio e — quando
+/// esiste una sola cosa sensata da fare — l'azione che lo risolve.
 ///
 /// Uno stato vuoto è una schermata a tutti gli effetti: lasciarlo come una
 /// riga di testo centrata fa sembrare l'app rotta invece che nuova.
@@ -15,18 +19,16 @@ class EmptyState extends StatelessWidget {
     super.key,
   });
 
-  final IconData icon;
+  final LinearIconData icon;
   final String message;
 
   /// Pulsante mostrato sotto il messaggio. Null quando l'azione è già
-  /// altrove nella schermata (tipicamente il FAB) e ripeterla sarebbe rumore.
+  /// altrove nella schermata (tipicamente la pillola in basso) e ripeterla
+  /// sarebbe rumore.
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -34,21 +36,19 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              height: 88,
-              width: 88,
-              decoration: BoxDecoration(
+              height: 64,
+              width: 64,
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: scheme.surfaceContainerHighest,
+                color: AppColors.surface,
               ),
-              child: Icon(icon, size: 40, color: scheme.onSurfaceVariant),
+              child: Center(child: LinearIcon(icon, color: AppColors.muted)),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.card),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: AppTypography.sectionLabel,
             ),
             if (action != null) ...[
               const SizedBox(height: AppSpacing.xl),

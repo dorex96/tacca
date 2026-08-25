@@ -55,3 +55,16 @@ flutter:
     - assets/audio/
     # Catalogo dei modelli OpenRouter selezionabili (Impostazioni AI, RF-08).
     - assets/ai/
+  fonts:
+    # Lato è il carattere dell'interfaccia (vedi lib/core/design/app_typography.dart).
+    # Google Fonts pubblica solo 400/700/900: i pesi 500 e 800 del design non
+    # esistono, quindi i token tipografici usano direttamente questi tre.
+    # Licenza SIL OFL 1.1 in assets/fonts/OFL.txt.
+    - family: Lato
+      fonts:
+        - asset: assets/fonts/Lato-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Lato-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Lato-Black.ttf
+          weight: 900

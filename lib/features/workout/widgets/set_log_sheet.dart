@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_sheet.dart';
+import '../../../core/widgets/linear_icon.dart';
+import '../../../core/widgets/pill_button.dart';
 import '../../../data/entities/log_set.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -36,21 +43,15 @@ Future<SetLogOutcome?> showSetLogSheet(
   double? suggestedWeightKg,
   String? suggestedReps,
 }) {
-  return showModalBottomSheet<SetLogOutcome>(
-    context: context,
-    isScrollControlled: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: _SetLogSheet(
-        exerciseName: exerciseName,
-        setNumber: setNumber,
-        weightKg: current?.weightKg ?? suggestedWeightKg,
-        reps: current?.reps ?? suggestedReps,
-        notes: current?.notes,
-        canRemove: current != null,
-      ),
+  return showAppSheet<SetLogOutcome>(
+    context,
+    builder: (context) => _SetLogSheet(
+      exerciseName: exerciseName,
+      setNumber: setNumber,
+      weightKg: current?.weightKg ?? suggestedWeightKg,
+      reps: current?.reps ?? suggestedReps,
+      notes: current?.notes,
+      canRemove: current != null,
     ),
   );
 }
@@ -119,109 +120,122 @@ class _SetLogSheetState extends State<_SetLogSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          0,
-          AppSpacing.lg,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppSheet(
+      title: l10n.workoutSetSheetTitle(widget.exerciseName, widget.setNumber),
+      scrollable: true,
+      children: [
+        FieldLabel(l10n.workoutWeightLabel),
+        // Il peso si ritocca quasi sempre di uno scatto: i due pulsanti
+        // evitano di aprire la tastiera con le mani sudate (RNF-04).
+        Row(
           children: [
-            Text(
-              l10n.workoutSetSheetTitle(widget.exerciseName, widget.setNumber),
-              style: theme.textTheme.titleLarge,
+            _StepButton(
+              icon: AppIcons.minus,
+              tooltip: '-2,5',
+              onPressed: () => _stepWeight(-2.5),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            // Il peso si ritocca quasi sempre di uno scatto: i due pulsanti
-            // evitano di aprire la tastiera con le mani sudate (RNF-04).
-            Row(
-              children: [
-                _StepButton(
-                  icon: Icons.remove,
-                  tooltip: '-2,5',
-                  onPressed: () => _stepWeight(-2.5),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _NumberField(
+                fieldKey: const ValueKey('set-weight'),
+                controller: _weight,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: TextField(
-                    key: const ValueKey('set-weight'),
-                    controller: _weight,
-                    autofocus: true,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.workoutWeightLabel,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                _StepButton(
-                  icon: Icons.add,
-                  tooltip: '+2,5',
-                  onPressed: () => _stepWeight(2.5),
-                ),
-              ],
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('set-reps'),
-              controller: _reps,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall,
-              decoration: InputDecoration(labelText: l10n.workoutRepsLabel),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('set-notes'),
-              controller: _notes,
-              decoration: InputDecoration(labelText: l10n.workoutSetNotesLabel),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                if (widget.canRemove)
-                  TextButton.icon(
-                    onPressed: () =>
-                        Navigator.of(context).pop(const SetLogRemoved()),
-                    icon: const Icon(Icons.undo),
-                    label: Text(l10n.workoutRemoveSet),
-                  ),
-                const Spacer(),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(140, 52),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(
-                    SetLogSaved(
-                      weightKg: _parsedWeight,
-                      reps: _blankToNull(_reps.text),
-                      notes: _blankToNull(_notes.text),
-                    ),
-                  ),
-                  child: Text(l10n.commonSave),
-                ),
-              ],
+            const SizedBox(width: AppSpacing.md),
+            _StepButton(
+              icon: AppIcons.add,
+              tooltip: '+2,5',
+              onPressed: () => _stepWeight(2.5),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: AppSpacing.card),
+        FieldLabel(l10n.workoutRepsLabel),
+        _NumberField(fieldKey: const ValueKey('set-reps'), controller: _reps),
+        const SizedBox(height: AppSpacing.card),
+        FieldLabel(l10n.workoutSetNotesLabel),
+        TextField(
+          key: const ValueKey('set-notes'),
+          controller: _notes,
+          style: AppTypography.paragraph.copyWith(color: AppColors.ink),
+          decoration: AppField.inset(),
+        ),
+        const SizedBox(height: AppSpacing.card),
+        Row(
+          children: [
+            if (widget.canRemove) ...[
+              PillButton(
+                label: l10n.workoutRemoveSet,
+                tone: PillTone.danger,
+                expand: false,
+                onPressed: () =>
+                    Navigator.of(context).pop(const SetLogRemoved()),
+              ),
+              const SizedBox(width: AppSpacing.md),
+            ],
+            Expanded(
+              child: PillButton(
+                label: l10n.commonSave,
+                onPressed: () => Navigator.of(context).pop(
+                  SetLogSaved(
+                    weightKg: _parsedWeight,
+                    reps: _blankToNull(_reps.text),
+                    notes: _blankToNull(_notes.text),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   String? _blankToNull(String value) =>
       value.trim().isEmpty ? null : value.trim();
+}
+
+/// Campo numerico grande e centrato: si legge da lontano e si corregge con
+/// un pollice solo.
+class _NumberField extends StatelessWidget {
+  const _NumberField({
+    required this.fieldKey,
+    required this.controller,
+    this.autofocus = false,
+    this.keyboardType,
+    this.inputFormatters,
+  });
+
+  final Key fieldKey;
+  final TextEditingController controller;
+  final bool autofocus;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        autofocus: autofocus,
+        textAlign: TextAlign.center,
+        style: AppTypography.numericField,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        decoration: AppField.inset(contentPadding: EdgeInsets.zero),
+      ),
+    );
+  }
 }
 
 /// Pulsante di incremento/decremento del carico: quadrato e grande, si
@@ -233,21 +247,24 @@ class _StepButton extends StatelessWidget {
     required this.onPressed,
   });
 
-  final IconData icon;
+  final LinearIconData icon;
   final String tooltip;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.filledTonal(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      iconSize: 28,
-      tooltip: tooltip,
-      style: IconButton.styleFrom(
-        minimumSize: const Size.square(56),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.fill,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox.square(
+            dimension: 56,
+            child: Center(child: LinearIcon(icon, size: 24)),
+          ),
         ),
       ),
     );

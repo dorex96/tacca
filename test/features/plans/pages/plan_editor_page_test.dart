@@ -143,7 +143,7 @@ void main() {
     (tester) async {
       await pumpEditor(tester);
 
-      await tester.tap(find.byIcon(Icons.check));
+      await tester.tap(find.text('Salva'));
       await tester.pumpAndSettle();
 
       expect(find.text('Il nome della scheda è obbligatorio.'), findsOneWidget);

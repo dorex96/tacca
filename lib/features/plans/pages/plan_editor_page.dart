@@ -2,16 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/block_type_labels.dart';
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/info_banner.dart';
+import '../../../core/widgets/pill_button.dart';
+import '../../../core/widgets/square_icon_button.dart';
 import '../../../data/entities/block.dart';
 import '../../../data/entities/workout_day.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/plan_editor_cubit.dart';
 import '../cubit/plan_editor_state.dart';
 import '../widgets/block_card.dart';
-import '../../../core/block_type_labels.dart';
 import '../widgets/day_tabs_bar.dart';
 
 /// Editor manuale di una scheda (RF-02): metadati, giorni, blocchi ed
@@ -43,9 +51,9 @@ class PlanEditorPage extends StatelessWidget {
       },
       builder: (context, state) {
         if (state.isLoading) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: const Center(child: CircularProgressIndicator()),
+          return const AppScaffold(
+            leading: AppBackButton(),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -58,84 +66,86 @@ class PlanEditorPage extends StatelessWidget {
             final discard = await _confirmDiscard(context, l10n);
             if (discard && context.mounted) Navigator.of(context).pop();
           },
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                state.isNew
-                    ? l10n.planEditorNewTitle
-                    : l10n.planEditorEditTitle,
-              ),
-              actions: [
-                if (state.draft.imagePaths.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined),
-                    tooltip: l10n.planImagesTitle,
-                    onPressed: () => context.push(
-                      '/plan-images',
-                      extra: state.draft.imagePaths,
-                    ),
+          child: AppScaffold(
+            leading: const AppBackButton(),
+            title: state.isNew
+                ? l10n.planEditorNewTitle
+                : l10n.planEditorEditTitle,
+            actions: [
+              if (state.draft.imagePaths.isNotEmpty)
+                SquareIconButton(
+                  icon: AppIcons.gallery,
+                  tooltip: l10n.planImagesTitle,
+                  onPressed: () => context.push(
+                    '/plan-images',
+                    extra: state.draft.imagePaths,
                   ),
-                IconButton(
-                  icon: state.isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check),
-                  tooltip: l10n.commonSave,
-                  onPressed: state.isSaving ? null : cubit.save,
                 ),
-              ],
+            ],
+            dock: PillButton(
+              label: l10n.commonSave,
+              icon: AppIcons.check,
+              onPressed: state.isSaving ? null : cubit.save,
             ),
             body: ListView(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.xxl,
+                AppSpacing.xl,
+                0,
+                AppSpacing.xl,
+                AppSpacing.actionClearance,
               ),
               children: [
                 if (state.isAiDraft) ...[
                   InfoBanner(
-                    icon: Icons.auto_awesome,
+                    icon: AppIcons.cpu,
                     message: l10n.aiImportReviewNotice,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.card),
                 ],
-                TextFormField(
-                  key: const ValueKey('plan-name'),
-                  initialValue: state.draft.name,
-                  decoration: InputDecoration(
-                    labelText: l10n.planEditorNameLabel,
-                    hintText: l10n.planEditorNameHint,
+                LabeledField(
+                  label: l10n.planEditorNameLabel,
+                  child: TextFormField(
+                    key: const ValueKey('plan-name'),
+                    initialValue: state.draft.name,
+                    style: AppTypography.row,
+                    decoration: AppField.onBackground(
+                      hintText: l10n.planEditorNameHint,
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: cubit.updateName,
                   ),
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: cubit.updateName,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  key: const ValueKey('plan-description'),
-                  initialValue: state.draft.description ?? '',
-                  decoration: InputDecoration(
-                    labelText: l10n.planEditorDescriptionLabel,
+                const SizedBox(height: AppSpacing.card),
+                LabeledField(
+                  label: l10n.planEditorDescriptionLabel,
+                  child: TextFormField(
+                    key: const ValueKey('plan-description'),
+                    initialValue: state.draft.description ?? '',
+                    style: AppTypography.paragraph.copyWith(
+                      color: AppColors.ink,
+                    ),
+                    decoration: AppField.onBackground(),
+                    onChanged: cubit.updateDescription,
                   ),
-                  onChanged: cubit.updateDescription,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  key: const ValueKey('plan-notes'),
-                  initialValue: state.draft.notes ?? '',
-                  decoration: InputDecoration(
-                    labelText: l10n.planEditorNotesLabel,
+                const SizedBox(height: AppSpacing.card),
+                LabeledField(
+                  label: l10n.planEditorNotesLabel,
+                  child: TextFormField(
+                    key: const ValueKey('plan-notes'),
+                    initialValue: state.draft.notes ?? '',
+                    style: AppTypography.paragraph.copyWith(
+                      color: AppColors.ink,
+                    ),
+                    decoration: AppField.onBackground(),
+                    minLines: 1,
+                    maxLines: 4,
+                    onChanged: cubit.updatePlanNotes,
                   ),
-                  minLines: 1,
-                  maxLines: 4,
-                  onChanged: cubit.updatePlanNotes,
                 ),
-                // Separa i dati della scheda dalla struttura dei giorni: da
-                // qui in giù si lavora sul contenuto dell'allenamento.
-                const Divider(),
+                // Da qui in giù si lavora sul contenuto dell'allenamento, non
+                // più sui dati della scheda: lo stacco è quello fra gruppi.
+                const SizedBox(height: AppSpacing.xxl),
                 if (state.showDayTabs)
                   DayTabsBar(
                     days: state.draft.days.toList(),
@@ -145,13 +155,14 @@ class PlanEditorPage extends StatelessWidget {
                 else
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: PillButton.compact(
+                      label: l10n.planEditorAddDay,
+                      icon: AppIcons.add,
+                      tone: PillTone.outline,
                       onPressed: cubit.addDay,
-                      icon: const Icon(Icons.add),
-                      label: Text(l10n.planEditorAddDay),
                     ),
                   ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.card),
                 _DayBlocksSection(
                   key: ValueKey('day-blocks-${state.selectedDayIndex}'),
                   day: state.draft.days[state.selectedDayIndex],
@@ -198,27 +209,26 @@ class _DayBlocksSection extends StatelessWidget {
     final blocks = day.blocks.toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showDayNotes) ...[
-          TextFormField(
-            key: ValueKey('day-notes-${identityHashCode(day)}'),
-            initialValue: day.notes ?? '',
-            decoration: InputDecoration(labelText: l10n.planEditorNotesLabel),
-            onChanged: (v) => cubit.updateDayNotes(dayIndex, v),
+          LabeledField(
+            label: l10n.planEditorNotesLabel,
+            child: TextFormField(
+              key: ValueKey('day-notes-${identityHashCode(day)}'),
+              initialValue: day.notes ?? '',
+              style: AppTypography.paragraph.copyWith(color: AppColors.ink),
+              decoration: AppField.onBackground(),
+              onChanged: (v) => cubit.updateDayNotes(dayIndex, v),
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.card),
         ],
         if (blocks.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Center(
-              child: Text(
-                l10n.dayNoBlocks,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+              child: Text(l10n.dayNoBlocks, style: AppTypography.sectionLabel),
             ),
           )
         else
@@ -243,10 +253,11 @@ class _DayBlocksSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
+          child: PillButton.compact(
+            label: l10n.planEditorAddBlock,
+            icon: AppIcons.add,
+            tone: PillTone.outline,
             onPressed: () => _pickBlockType(context, l10n, dayIndex),
-            icon: const Icon(Icons.add),
-            label: Text(l10n.planEditorAddBlock),
           ),
         ),
       ],
@@ -258,36 +269,21 @@ class _DayBlocksSection extends StatelessWidget {
     AppLocalizations l10n,
     int dayIndex,
   ) async {
-    final type = await showModalBottomSheet<BlockType>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                0,
-                AppSpacing.xl,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                l10n.planEditorBlockTypeLabel,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+    final type = await showAppSheet<BlockType>(
+      context,
+      builder: (context) => AppSheet(
+        title: l10n.planEditorBlockTypeLabel,
+        scrollable: true,
+        children: [
+          for (var i = 0; i < BlockType.values.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.sm),
+            SheetOption(
+              icon: AppIcons.noteAdd,
+              title: blockTypeLabel(l10n, BlockType.values[i]),
+              onTap: () => Navigator.of(context).pop(BlockType.values[i]),
             ),
-            for (final blockType in BlockType.values)
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xl,
-                  vertical: AppSpacing.xs,
-                ),
-                title: Text(blockTypeLabel(l10n, blockType)),
-                onTap: () => Navigator.of(context).pop(blockType),
-              ),
-            const SizedBox(height: AppSpacing.sm),
           ],
-        ),
+        ],
       ),
     );
     if (type != null) cubit.addBlock(dayIndex, type);

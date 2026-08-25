@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/design/app_radius.dart';
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_menu.dart';
 import '../../../core/widgets/confirm_dialog.dart';
-import '../../../core/widgets/meta_chip.dart';
+import '../../../core/widgets/linear_icon.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../data/entities/workout_plan.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -11,8 +16,10 @@ enum _PlanAction { setActive, edit, duplicate, archiveToggle, delete }
 
 /// Riga dell'archivio schede (RF-01): apertura al tap, azioni nel menu.
 ///
-/// La scheda in uso è l'unica colorata della lista: un solo elemento in
-/// evidenza per schermata, altrimenti non è più in evidenza nulla.
+/// La scheda in uso è l'unica lime della lista — e dell'intera schermata: un
+/// solo elemento in evidenza, altrimenti non è più in evidenza nulla. Porta
+/// anche un disco bianco con la spunta e il nome in peso forte, così si
+/// riconosce anche a colori spenti.
 class PlanListTile extends StatelessWidget {
   const PlanListTile({
     required this.plan,
@@ -35,133 +42,126 @@ class PlanListTile extends StatelessWidget {
 
   /// Null quando l'azione non ha senso (già in uso, oppure scheda archiviata).
   final VoidCallback? onSetActive;
+
   final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final days = l10n.plansDaysCount(plan.days.length);
 
-    final foreground = highlighted ? scheme.onPrimaryContainer : null;
-
-    return Card(
-      color: highlighted ? scheme.primaryContainer : null,
-      shape: highlighted
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              side: BorderSide(color: scheme.primary, width: 1.5),
-            )
-          : null,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.xs,
-            AppSpacing.md,
+    final menu = AppMenuButton<_PlanAction>(
+      shape: MenuButtonShape.ghost,
+      onSelected: (action) => _handle(context, action),
+      itemBuilder: (context) => [
+        if (onSetActive != null)
+          appMenuItem(
+            value: _PlanAction.setActive,
+            label: l10n.plansActionSetActive,
           ),
-          child: Row(
-            children: [
-              Container(
-                height: 44,
-                width: 44,
-                decoration: BoxDecoration(
-                  color: highlighted
-                      ? scheme.primary
-                      : scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(
-                  highlighted ? Icons.check_rounded : Icons.fitness_center,
-                  color: highlighted ? scheme.onPrimary : scheme.primary,
+        appMenuItem(value: _PlanAction.edit, label: l10n.plansActionEdit),
+        appMenuItem(
+          value: _PlanAction.duplicate,
+          label: l10n.plansActionDuplicate,
+        ),
+        appMenuItem(
+          value: _PlanAction.archiveToggle,
+          label: plan.isArchived
+              ? l10n.plansActionRestore
+              : l10n.plansActionArchive,
+        ),
+        appMenuItem(
+          value: _PlanAction.delete,
+          label: l10n.plansActionDelete,
+          icon: AppIcons.trash,
+          destructive: true,
+        ),
+      ],
+    );
+
+    if (highlighted) {
+      return SurfaceCard(
+        color: AppColors.lime,
+        onTap: onOpen,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.card,
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 32,
+              width: 32,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surface,
+              ),
+              child: const Center(
+                child: LinearIcon(
+                  AppIcons.check,
+                  size: 20,
+                  color: AppColors.ink,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      plan.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: foreground,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    MetaChip(
-                      icon: Icons.calendar_today_outlined,
-                      label: l10n.plansDaysCount(plan.days.length),
-                      tone: foreground,
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<_PlanAction>(
-                onSelected: (action) => _handle(context, action),
-                iconColor: foreground,
-                itemBuilder: (context) => [
-                  if (onSetActive != null)
-                    _item(
-                      value: _PlanAction.setActive,
-                      icon: Icons.play_circle_outline,
-                      label: l10n.plansActionSetActive,
-                    ),
-                  _item(
-                    value: _PlanAction.edit,
-                    icon: Icons.edit_outlined,
-                    label: l10n.plansActionEdit,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    plan.name,
+                    style: AppTypography.rowStrong,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  _item(
-                    value: _PlanAction.duplicate,
-                    icon: Icons.copy_all_outlined,
-                    label: l10n.plansActionDuplicate,
-                  ),
-                  _item(
-                    value: _PlanAction.archiveToggle,
-                    icon: plan.isArchived
-                        ? Icons.unarchive_outlined
-                        : Icons.archive_outlined,
-                    label: plan.isArchived
-                        ? l10n.plansActionRestore
-                        : l10n.plansActionArchive,
-                  ),
-                  _item(
-                    value: _PlanAction.delete,
-                    icon: Icons.delete_outline,
-                    label: l10n.plansActionDelete,
-                    color: scheme.error,
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    days,
+                    style: AppTypography.chip.copyWith(color: AppColors.ink),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            menu,
+          ],
+        ),
+      );
+    }
+
+    final row = SurfaceCard(
+      onTap: onOpen,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.card,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                plan.name,
+                style: AppTypography.row,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(days, style: AppTypography.meta),
+            menu,
+          ],
         ),
       ),
     );
-  }
 
-  /// Icona + etichetta: nel menu l'icona è il primo aggancio visivo, il testo
-  /// toglie ogni ambiguità.
-  PopupMenuItem<_PlanAction> _item({
-    required _PlanAction value,
-    required IconData icon,
-    required String label,
-    Color? color,
-  }) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: AppSpacing.md),
-          Text(label, style: color == null ? null : TextStyle(color: color)),
-        ],
-      ),
-    );
+    // Le archiviate restano leggibili ma spente: sono lì per essere
+    // ritrovate, non per essere usate.
+    return plan.isArchived ? Opacity(opacity: 0.72, child: row) : row;
   }
 
   Future<void> _handle(BuildContext context, _PlanAction action) async {
@@ -189,5 +189,32 @@ class PlanListTile extends StatelessWidget {
       destructive: true,
     );
     if (confirmed) onDelete();
+  }
+}
+
+/// Campo di ricerca dell'archivio: pillola bianca alta 48 con la lente in
+/// testa, senza contorno.
+class PlanSearchField extends StatelessWidget {
+  const PlanSearchField({required this.onChanged, super.key});
+
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return TextField(
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      style: AppTypography.row,
+      decoration: AppField.onBackground(
+        hintText: l10n.plansSearchHint,
+        prefixIcon: const LinearIcon(
+          AppIcons.search,
+          size: 20,
+          color: AppColors.muted,
+        ),
+      ),
+    );
   }
 }

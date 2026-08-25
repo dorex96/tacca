@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/block_type_labels.dart';
+import '../../../core/design/app_colors.dart';
+import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/linear_icon.dart';
+import '../../../core/widgets/pill_button.dart';
+import '../../../core/widgets/square_icon_button.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../data/entities/block.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/plan_editor_cubit.dart';
 import 'block_params_fields.dart';
-import '../../../core/block_type_labels.dart';
 import 'exercise_tile.dart';
 
 /// Card espandibile per un [Block]: intestazione con riepilogo (tap per
@@ -32,110 +41,128 @@ class BlockCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final instanceKey = identityHashCode(block);
 
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ExpansionTile(
-        key: PageStorageKey('block-tile-$instanceKey'),
-        leading: ReorderableDragStartListener(
-          index: index,
-          child: Icon(
-            Icons.drag_indicator,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        title: Text(
-          blockTypeLabel(l10n, block.type),
-          style: theme.textTheme.titleMedium,
-        ),
-        subtitle: Text(
-          _summary(l10n),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
-          tooltip: l10n.planEditorRemoveBlock,
-          onPressed: () => cubit.removeBlock(dayIndex, index),
-        ),
-        children: [
-          // Bucket isolato: gli `EditableText` annidati (campi numerici,
-          // note, esercizi) usano PageStorage per il proprio scroll interno
-          // e altrimenti collidono con lo stato bool di ExpansionTile
-          // (flutter/flutter#36539).
-          PageStorage(
-            bucket: PageStorageBucket(),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DropdownButtonFormField<BlockType>(
-                    initialValue: block.type,
-                    decoration: InputDecoration(
-                      labelText: l10n.planEditorBlockTypeLabel,
-                    ),
-                    items: [
-                      for (final type in BlockType.values)
-                        DropdownMenuItem(
-                          value: type,
-                          child: Text(blockTypeLabel(l10n, type)),
-                        ),
-                    ],
-                    onChanged: (type) {
-                      if (type != null) {
-                        cubit.changeBlockType(dayIndex, index, type);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  BlockParamsFields(
-                    block: block,
-                    cubit: cubit,
-                    dayIndex: dayIndex,
-                    blockIndex: index,
-                  ),
-                  if (block.type != BlockType.freeText) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    TextFormField(
-                      key: ValueKey('block-notes-$instanceKey'),
-                      initialValue: block.notes ?? '',
-                      decoration: InputDecoration(
-                        labelText: l10n.planEditorBlockNotesLabel,
-                      ),
-                      onChanged: (v) =>
-                          cubit.updateBlockNotes(dayIndex, index, v),
-                    ),
-                    const Divider(),
-                    _ExerciseList(
-                      block: block,
-                      dayIndex: dayIndex,
-                      blockIndex: index,
-                      cubit: cubit,
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => cubit.addExercise(dayIndex, index),
-                        icon: const Icon(Icons.add),
-                        label: Text(l10n.planEditorAddExercise),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: SurfaceCard(
+        padding: EdgeInsets.zero,
+        child: ExpansionTile(
+          key: PageStorageKey('block-tile-$instanceKey'),
+          leading: ReorderableDragStartListener(
+            index: index,
+            child: const GhostIconSurface(
+              icon: AppIcons.lines,
+              foreground: AppColors.muted,
             ),
           ),
-        ],
+          title: Text(
+            blockTypeLabel(l10n, block.type),
+            style: AppTypography.cardTitle,
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              _summary(l10n),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.paragraphSmall,
+            ),
+          ),
+          trailing: GhostIconButton(
+            icon: AppIcons.trash,
+            tooltip: l10n.planEditorRemoveBlock,
+            foreground: AppColors.muted,
+            onPressed: () => cubit.removeBlock(dayIndex, index),
+          ),
+          children: [
+            // Bucket isolato: gli `EditableText` annidati (campi numerici,
+            // note, esercizi) usano PageStorage per il proprio scroll interno
+            // e altrimenti collidono con lo stato bool di ExpansionTile
+            // (flutter/flutter#36539).
+            PageStorage(
+              bucket: PageStorageBucket(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.card,
+                  AppSpacing.sm,
+                  AppSpacing.card,
+                  AppSpacing.card,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LabeledField(
+                      label: l10n.planEditorBlockTypeLabel,
+                      child: DropdownButtonFormField<BlockType>(
+                        initialValue: block.type,
+                        isExpanded: true,
+                        style: AppTypography.row,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        icon: const LinearIcon(
+                          AppIcons.chevronDown,
+                          size: 20,
+                          color: AppColors.muted,
+                        ),
+                        decoration: AppField.inset(),
+                        items: [
+                          for (final type in BlockType.values)
+                            DropdownMenuItem(
+                              value: type,
+                              child: Text(blockTypeLabel(l10n, type)),
+                            ),
+                        ],
+                        onChanged: (type) {
+                          if (type != null) {
+                            cubit.changeBlockType(dayIndex, index, type);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.card),
+                    BlockParamsFields(
+                      block: block,
+                      cubit: cubit,
+                      dayIndex: dayIndex,
+                      blockIndex: index,
+                    ),
+                    if (block.type != BlockType.freeText) ...[
+                      const SizedBox(height: AppSpacing.card),
+                      LabeledField(
+                        label: l10n.planEditorBlockNotesLabel,
+                        child: TextFormField(
+                          key: ValueKey('block-notes-$instanceKey'),
+                          initialValue: block.notes ?? '',
+                          style: AppTypography.paragraph.copyWith(
+                            color: AppColors.ink,
+                          ),
+                          decoration: AppField.inset(),
+                          onChanged: (v) =>
+                              cubit.updateBlockNotes(dayIndex, index, v),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.card),
+                      _ExerciseList(
+                        block: block,
+                        dayIndex: dayIndex,
+                        blockIndex: index,
+                        cubit: cubit,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: PillButton.compact(
+                          label: l10n.planEditorAddExercise,
+                          icon: AppIcons.add,
+                          tone: PillTone.outline,
+                          onPressed: () => cubit.addExercise(dayIndex, index),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -170,12 +197,7 @@ class _ExerciseList extends StatelessWidget {
     if (exercises.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Text(
-          l10n.blockNoExercises,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
+        child: Text(l10n.blockNoExercises, style: AppTypography.sectionLabel),
       );
     }
 

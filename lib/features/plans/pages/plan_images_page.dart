@@ -3,6 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/design/app_radius.dart';
+import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/square_icon_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/images/plan_image_store.dart';
 
@@ -19,8 +24,9 @@ class PlanImagesPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final imageStore = context.read<PlanImageStore>();
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planImagesTitle)),
+    return AppScaffold(
+      leading: const AppBackButton(),
+      title: l10n.planImagesTitle,
       body: PageView.builder(
         itemCount: imagePaths.length,
         itemBuilder: (context, index) => FutureBuilder<File>(
@@ -32,11 +38,24 @@ class PlanImagesPage extends StatelessWidget {
             }
             return InteractiveViewer(
               maxScale: 6,
-              child: Center(
-                child: Image.file(
-                  file,
-                  errorBuilder: (context, error, stackTrace) =>
-                      Center(child: Text(l10n.planImagesMissing)),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Image.file(
+                    file,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Text(
+                        l10n.planImagesMissing,
+                        style: AppTypography.sectionLabel,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             );

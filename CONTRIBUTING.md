@@ -39,7 +39,17 @@ bash <(curl -s https://raw.githubusercontent.com/objectbox/objectbox-dart/main/i
 
 **Data layer.** `ToMany` does not preserve order, so every child has an `int sortOrder` and repositories return sorted lists. Enums are stored as `String` with a `@Transient()` getter. Block parameters are flat nullable fields — no polymorphism, no JSON blobs. ObjectBox does **not** cascade updates: a repository that writes an aggregate must walk the tree, `put` every child explicitly and delete the ids that disappeared, exactly like `savePlan` and `saveLog`. History is snapshot-based on purpose: logs keep the plan and exercise names so they stay readable after the plan changes.
 
-**Appearance.** Colours, elevations, radii and typography live in `lib/app/theme.dart`; spacing and radius tokens in `lib/core/design/`. Pages pass no hand-tuned numbers. Recurring pieces (`EmptyState`, `SectionHeader`, `MetaChip`, `InfoBanner`, `showConfirmDialog`) live in `lib/core/widgets/`. Tap targets stay ≥ 48dp.
+**Appearance.** Component themes live in `lib/app/theme.dart`; the tokens they are built from live in `lib/core/design/` — `AppColors`, `AppTypography`, `AppRadius`, `AppSpacing`, plus the icon set in `linear_icons.dart`. Pages pass no hand-tuned numbers and no raw hex.
+
+The visual language is fixed: background `#F4F4F6`, white surfaces at radius 26, ink `#192126`, prose in `#232A3A`, secondary text `#8C9092`, hairlines `#D4D8E0`, and one lime accent `#BBF246` — text on lime is always ink. **One lime element per screen**, because that is the whole mechanism by which "what is live right now" reads at a glance; a second one destroys the first. Pink `#FF5678` is destructive, and it appears as text (menu entries, "Rimuovi serie") everywhere except the final delete confirmation, which is the only place it becomes a fill.
+
+Type is Lato for the interface and the platform font for paragraphs — a long paragraph set in tight Lato does not read. Google Fonts publishes Lato at 400/700/900 only; the design's nominal 500 and 800 do not exist, so the tokens use the real weights.
+
+Icons come from `AppIcons` (the design's own set, drawn by `LinearIcon` from SVG paths). Do not reach for `Icons.*` in the UI; if a glyph is missing, take it from the design file rather than substituting a Material one.
+
+Recurring pieces live in `lib/core/widgets/`: `AppScaffold` (page shell: header of square icon buttons, big title, docked pill), `PillButton`, `SquareIconButton`/`GhostIconButton`, `SurfaceCard`, `MetaChip`, `Section`/`SectionHeader`, `EmptyState`, `InfoBanner`, `AppSheet`/`showAppSheet`, `AppField`, `AppMenuButton`, `showConfirmDialog`. Tap targets stay ≥ 48dp even where the design draws 40 — `SquareIconButton` paints 40 inside a 48 target on purpose.
+
+Bottom sheets must open on the **root** navigator (`showAppSheet` does): the floating tab bar lives in the shell's `Stack`, so a sheet opened on the branch navigator renders underneath it.
 
 **Strings.** Every user-facing string goes through `lib/l10n/app_it.arb`. Never hardcode text in a widget, not even temporarily.
 

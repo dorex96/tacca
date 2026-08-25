@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
 import '../../../core/extensions/duration_format.dart';
 import '../../../core/extensions/log_set_format.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/meta_chip.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/square_icon_button.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../data/entities/log_entry.dart';
 import '../../../data/entities/workout_log.dart';
 import '../../../l10n/app_localizations.dart';
@@ -23,15 +29,14 @@ class HistoryDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     return BlocBuilder<HistoryDetailCubit, WorkoutLog?>(
       builder: (context, log) {
         if (log == null) {
-          return Scaffold(
-            appBar: AppBar(),
+          return AppScaffold(
+            leading: const AppBackButton(),
             body: EmptyState(
-              icon: Icons.help_outline,
+              icon: AppIcons.search,
               message: l10n.workoutSessionNotFound,
             ),
           );
@@ -40,29 +45,30 @@ class HistoryDetailPage extends StatelessWidget {
         final aborted = log.status == WorkoutStatus.aborted;
         final entries = _sortedEntries(log);
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(log.planNameSnapshot),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                tooltip: l10n.commonDelete,
-                onPressed: () => _confirmDelete(context, l10n, log),
-              ),
-            ],
-          ),
+        return AppScaffold(
+          leading: const AppBackButton(),
+          actions: [
+            SquareIconButton(
+              icon: AppIcons.trash,
+              tooltip: l10n.commonDelete,
+              foreground: AppColors.danger,
+              onPressed: () => _confirmDelete(context, l10n, log),
+            ),
+          ],
           body: ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
+              AppSpacing.xl,
+              0,
+              AppSpacing.xl,
               AppSpacing.xxl,
             ),
             children: [
+              Text(log.planNameSnapshot, style: AppTypography.screenTitle),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 '${l10n.historySessionDate(log.startedAt)} '
                 '${l10n.historySessionTime(log.startedAt)}',
-                style: theme.textTheme.headlineSmall,
+                style: AppTypography.sectionLabel,
               ),
               const SizedBox(height: AppSpacing.md),
               Wrap(
@@ -70,28 +76,35 @@ class HistoryDetailPage extends StatelessWidget {
                 runSpacing: AppSpacing.sm,
                 children: [
                   MetaChip(
-                    icon: Icons.today_outlined,
+                    icon: AppIcons.calendar,
                     label: log.dayLabelSnapshot,
+                    tone: ChipTone.onBackground,
+                    small: false,
                   ),
                   MetaChip(
-                    icon: Icons.timer_outlined,
+                    icon: AppIcons.wave,
                     label: log.duration().compact,
+                    tone: ChipTone.onBackground,
+                    small: false,
                   ),
                   MetaChip(
                     label: _statusLabel(l10n, log.status),
-                    tone: aborted ? theme.colorScheme.error : null,
+                    tone: aborted ? ChipTone.danger : ChipTone.accent,
+                    small: false,
                   ),
                 ],
               ),
-              if ((log.notes ?? '').isNotEmpty) ...[
-                SectionHeader(label: l10n.historySessionNotesLabel),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(log.notes!, style: theme.textTheme.bodyLarge),
+              if ((log.notes ?? '').isNotEmpty)
+                Section(
+                  label: l10n.historySessionNotesLabel,
+                  child: SurfaceCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.card,
+                      vertical: AppSpacing.lg,
+                    ),
+                    child: Text(log.notes!, style: AppTypography.paragraph),
                   ),
                 ),
-              ],
               const SizedBox(height: AppSpacing.xl),
               for (final entry in entries)
                 Padding(
@@ -150,75 +163,60 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final sets = entry.sets.toList()
       ..sort((a, b) => a.setNumber.compareTo(b.setNumber));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              entry.exerciseNameSnapshot,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            if (sets.isEmpty)
-              Text(
-                l10n.historyExerciseNotDone,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              )
-            else
-              for (final set in sets)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 84,
-                            child: Text(
-                              l10n.workoutSetLabel(set.setNumber),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              set.summary,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if ((set.notes ?? '').isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 84),
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(entry.exerciseNameSnapshot, style: AppTypography.cardTitle),
+          const SizedBox(height: AppSpacing.md),
+          if (sets.isEmpty)
+            Text(l10n.historyExerciseNotDone, style: AppTypography.meta)
+          else
+            for (final set in sets)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 84,
                           child: Text(
-                            set.notes!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
+                            l10n.workoutSetLabel(set.setNumber),
+                            style: AppTypography.row.copyWith(
+                              color: AppColors.muted,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                        Expanded(
+                          child: Text(
+                            set.summary,
+                            style: AppTypography.numeric,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if ((set.notes ?? '').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 84,
+                          top: AppSpacing.xs,
+                        ),
+                        child: Text(
+                          set.notes!,
+                          style: AppTypography.paragraphSmall.copyWith(
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-          ],
-        ),
+              ),
+        ],
       ),
     );
   }

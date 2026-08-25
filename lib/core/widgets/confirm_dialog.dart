@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../design/app_colors.dart';
+import '../design/app_radius.dart';
+import '../design/app_spacing.dart';
+import '../design/app_typography.dart';
+import 'pill_button.dart';
 
 /// Conferma unica per tutta l'app: stessa struttura (titolo, spiegazione di
 /// cosa succede, annulla a sinistra e azione a destra) in ogni dialog.
 ///
-/// Le conferme distruttive colorano il pulsante di conferma con il colore di
-/// errore: è l'unico punto in cui il rosso compare nell'interfaccia, e serve
-/// a farlo notare.
+/// Le conferme distruttive colorano la pillola di conferma di rosa: è l'unico
+/// punto in cui il rosa diventa un fondo e non un testo, e serve a farlo
+/// notare. Il testo sopra resta inchiostro — bianco su rosa non si legge.
 Future<bool> showConfirmDialog(
   BuildContext context, {
   required String title,
@@ -17,30 +22,115 @@ Future<bool> showConfirmDialog(
   bool destructive = false,
 }) async {
   final l10n = AppLocalizations.of(context);
-  final scheme = Theme.of(context).colorScheme;
 
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(cancelLabel ?? l10n.commonCancel),
+    barrierColor: AppColors.scrim,
+    builder: (context) => Dialog(
+      insetPadding: const EdgeInsets.all(AppSpacing.xl),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AppTypography.sheetTitleLong),
+            const SizedBox(height: AppSpacing.md),
+            Text(message, style: AppTypography.paragraph),
+            const SizedBox(height: AppSpacing.card),
+            Row(
+              children: [
+                Expanded(
+                  child: PillButton(
+                    label: cancelLabel ?? l10n.commonCancel,
+                    tone: PillTone.outline,
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: PillButton(
+                    label: confirmLabel,
+                    tone: destructive
+                        ? PillTone.dangerFilled
+                        : PillTone.primary,
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        FilledButton(
-          style: destructive
-              ? FilledButton.styleFrom(
-                  backgroundColor: scheme.error,
-                  foregroundColor: scheme.onError,
-                )
-              : null,
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(confirmLabel),
-        ),
-      ],
+      ),
     ),
   );
   return confirmed ?? false;
+}
+
+/// Dialog con un campo di testo (rinomina): stessa forma della conferma.
+Future<String?> showTextInputDialog(
+  BuildContext context, {
+  required String title,
+  required String label,
+  required String initialValue,
+  String? confirmLabel,
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final controller = TextEditingController(text: initialValue);
+
+  final result = await showDialog<String>(
+    context: context,
+    barrierColor: AppColors.scrim,
+    builder: (context) => Dialog(
+      insetPadding: const EdgeInsets.all(AppSpacing.xl),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AppTypography.sheetTitleLong),
+            const SizedBox(height: AppSpacing.card),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: label,
+                fillColor: AppColors.fill,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+            ),
+            const SizedBox(height: AppSpacing.card),
+            Row(
+              children: [
+                Expanded(
+                  child: PillButton(
+                    label: l10n.commonCancel,
+                    tone: PillTone.outline,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: PillButton(
+                    label: confirmLabel ?? l10n.commonSave,
+                    onPressed: () =>
+                        Navigator.of(context).pop(controller.text.trim()),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  controller.dispose();
+  return result;
 }

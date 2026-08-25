@@ -56,7 +56,11 @@ void main() {
   testWidgets('mostra tre destinazioni e parte dalle Schede', (tester) async {
     await pumpApp(tester);
 
-    expect(find.byType(NavigationDestination), findsNWidgets(3));
+    // Le destinazioni della tab bar flottante: solo quella attiva porta
+    // l'etichetta a schermo, quindi si cercano per chiave.
+    expect(find.byKey(const ValueKey('home-tab-Schede')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-tab-Storico')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-tab-Impostazioni')), findsOneWidget);
     // Ramo iniziale: archivio schede.
     expect(find.text('Le mie schede'), findsOneWidget);
     expect(
@@ -68,18 +72,18 @@ void main() {
   testWidgets('naviga tra Schede, Storico e Impostazioni', (tester) async {
     await pumpApp(tester);
 
-    // → Storico (icona non selezionata = variante outlined).
-    await tester.tap(find.byIcon(Icons.history_outlined));
+    // → Storico.
+    await tester.tap(find.byKey(const ValueKey('home-tab-Storico')));
     await tester.pumpAndSettle();
     expect(find.text('Nessun allenamento registrato.'), findsOneWidget);
 
     // → Impostazioni.
-    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.tap(find.byKey(const ValueKey('home-tab-Impostazioni')));
     await tester.pumpAndSettle();
     expect(find.text('Intelligenza artificiale'), findsOneWidget);
 
     // → di nuovo Schede.
-    await tester.tap(find.byIcon(Icons.fitness_center_outlined));
+    await tester.tap(find.byKey(const ValueKey('home-tab-Schede')));
     await tester.pumpAndSettle();
     expect(
       find.text('Nessuna scheda. Creane una per iniziare.'),

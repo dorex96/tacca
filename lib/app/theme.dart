@@ -1,306 +1,317 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../core/design/app_chrome.dart';
+import '../core/design/app_colors.dart';
 import '../core/design/app_radius.dart';
 import '../core/design/app_spacing.dart';
+import '../core/design/app_typography.dart';
 
-/// Tema dell'app (Material 3). Un unico seed color genera gli schemi
-/// chiaro e scuro; il tema di sistema decide quale usare.
+/// Tema dell'app: il restyling sul linguaggio visivo del file Figma
+/// "Gym full figma" — fondo `#F4F4F6`, superfici bianche a raggio 26,
+/// inchiostro `#192126`, un solo accento lime `#BBF246`.
 ///
-/// Qui vive **tutto** ciò che deve restare identico ovunque: raggi, altezze
-/// minime dei controlli, stile di card, campi, barre e pannelli. Le pagine
-/// non ridefiniscono questi valori — così una card dell'archivio e una della
-/// sessione sono la stessa card, e le spaziature seguono [AppSpacing].
+/// Qui vive **tutto** ciò che deve restare identico ovunque: colori, raggi,
+/// altezze minime dei controlli, stile di card, campi, sheet e menu. Le
+/// pagine non ridefiniscono questi valori — così una card dell'archivio e una
+/// della sessione sono la stessa card.
+///
+/// **Un solo tema, non due.** Il design definisce una palette sola; una
+/// versione scura sarebbe una seconda interfaccia inventata qui e non
+/// disegnata da nessuna parte. [App] blocca quindi `themeMode` su chiaro: un
+/// telefono in dark mode vede comunque l'app come è stata disegnata, non una
+/// sua approssimazione.
+///
+/// Nota tecnica: gli stili dei component theme vanno costruiti da
+/// [AppTypography] e mai ripresi da `ThemeData(...).textTheme`, perché
+/// `ThemeData` fonde le *dimensioni* tipografiche solo dentro `textTheme`
+/// (uno stile preso da lì arriverebbe senza `fontSize`).
 abstract final class AppTheme {
-  static const Color _seed = Color(0xFF2E5AAC);
-
   /// Area minima dei controlli tappabili: l'app si usa in palestra, spesso
   /// con una mano sola e senza guardare (RNF-04).
   static const Size _minTapSize = Size(64, 48);
 
-  static ThemeData get light => _build(Brightness.light);
-  static ThemeData get dark => _build(Brightness.dark);
+  static ThemeData get theme => _build();
 
-  static ThemeData _build(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seed,
-      brightness: brightness,
-    );
-
-    // Il text theme va costruito qui, completo di dimensioni: `ThemeData`
-    // fonde la geometria tipografica solo dentro `textTheme`, non nei temi
-    // dei componenti. Uno stile preso da `ThemeData(...).textTheme` e passato
-    // a un `AppBarThemeData` arriverebbe senza `fontSize` (titolo minuscolo).
-    // Le dimensioni restano quelle di sistema — scalano con le impostazioni
-    // di accessibilità — si interviene solo sui pesi, che sono ciò che
-    // costruisce la gerarchia.
-    final typography = Typography.material2021(
-      platform: defaultTargetPlatform,
-      colorScheme: scheme,
-    );
-    final text = _textTheme(
-      typography.englishLike.merge(
-        brightness == Brightness.dark ? typography.white : typography.black,
-      ),
+  static ThemeData _build() {
+    const scheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: AppColors.ink,
+      onPrimary: AppColors.surface,
+      primaryContainer: AppColors.lime,
+      onPrimaryContainer: AppColors.ink,
+      secondary: AppColors.lime,
+      onSecondary: AppColors.ink,
+      secondaryContainer: AppColors.lime,
+      onSecondaryContainer: AppColors.ink,
+      tertiary: AppColors.ink,
+      onTertiary: AppColors.surface,
+      tertiaryContainer: AppColors.lime,
+      onTertiaryContainer: AppColors.ink,
+      error: AppColors.danger,
+      onError: AppColors.ink,
+      errorContainer: AppColors.dangerSurface,
+      onErrorContainer: AppColors.ink,
+      surface: AppColors.background,
+      onSurface: AppColors.ink,
+      onSurfaceVariant: AppColors.muted,
+      surfaceContainerLowest: AppColors.surface,
+      surfaceContainerLow: AppColors.surface,
+      surfaceContainer: AppColors.surface,
+      surfaceContainerHigh: AppColors.fill,
+      surfaceContainerHighest: AppColors.fill,
+      outline: AppColors.stroke,
+      outlineVariant: AppColors.stroke,
+      inverseSurface: AppColors.ink,
+      onInverseSurface: AppColors.surface,
+      inversePrimary: AppColors.lime,
+      shadow: Color(0xFF000000),
+      scrim: AppColors.scrim,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      textTheme: text,
-      scaffoldBackgroundColor: scheme.surface,
+      textTheme: _textTheme,
+      scaffoldBackgroundColor: AppColors.background,
+      canvasColor: AppColors.surface,
+      splashFactory: InkSparkle.splashFactory,
+      iconTheme: const IconThemeData(color: AppColors.ink, size: 24),
 
-      appBarTheme: AppBarThemeData(
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
+      // Le pagine disegnano la propria intestazione (pulsanti icona quadrati
+      // + titolo Lato Black nel corpo): l'AppBar resta configurata per le
+      // poche schermate di servizio che la usano ancora.
+      appBarTheme: const AppBarThemeData(
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.ink,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        // Il colore cambia solo quando il contenuto scorre sotto la barra:
-        // separa senza aggiungere una linea permanente.
-        scrolledUnderElevation: 3,
+        scrolledUnderElevation: 0,
         centerTitle: false,
-        toolbarHeight: 60,
-        titleTextStyle: text.titleLarge,
-        iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
-        actionsIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+        toolbarHeight: 64,
+        titleTextStyle: AppTypography.screenTitle,
+        iconTheme: IconThemeData(color: AppColors.ink),
+        actionsIconTheme: IconThemeData(color: AppColors.ink),
+        systemOverlayStyle: AppChrome.systemOverlay,
       ),
 
-      // Card piatte, distinte dallo sfondo per tinta della superficie e da un
-      // bordo sottile: niente ombre, che in dark mode non si vedono.
+      // La forma dell'app: bianca, raggio 26, senza bordo e senza ombra. Si
+      // stacca dal fondo per luminosità, non per contorno.
       cardTheme: CardThemeData(
         elevation: 0,
-        color: scheme.surfaceContainerLow,
+        color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
 
       listTileTheme: ListTileThemeData(
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
+          horizontal: AppSpacing.card,
           vertical: AppSpacing.xs,
         ),
         minVerticalPadding: AppSpacing.md,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        iconColor: scheme.onSurfaceVariant,
-        titleTextStyle: text.titleMedium,
-        subtitleTextStyle: text.bodyMedium?.copyWith(
-          color: scheme.onSurfaceVariant,
-        ),
+        iconColor: AppColors.muted,
+        titleTextStyle: AppTypography.row,
+        subtitleTextStyle: AppTypography.paragraphSmall,
       ),
 
-      // Campi pieni con bordo sottile: leggibili anche su sfondo chiaro, e
-      // sempre uguali (le pagine non passano più `border:` a mano).
+      // Campi pieni, senza contorno: il contorno lo fa il colore della
+      // superficie. Il focus è l'unico stato che disegna un bordo.
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md + 2,
+          horizontal: AppSpacing.card,
+          vertical: AppSpacing.lg,
         ),
-        border: _inputBorder(scheme.outlineVariant),
-        enabledBorder: _inputBorder(scheme.outlineVariant),
-        disabledBorder: _inputBorder(
-          scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-        focusedBorder: _inputBorder(scheme.primary, width: 2),
-        errorBorder: _inputBorder(scheme.error),
-        focusedErrorBorder: _inputBorder(scheme.error, width: 2),
-        labelStyle: TextStyle(color: scheme.onSurfaceVariant),
-        floatingLabelStyle: TextStyle(color: scheme.primary),
-        hintStyle: TextStyle(
-          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-        ),
-        helperStyle: TextStyle(color: scheme.onSurfaceVariant),
-        prefixIconColor: scheme.onSurfaceVariant,
-        suffixIconColor: scheme.onSurfaceVariant,
+        border: _fieldBorder(Colors.transparent),
+        enabledBorder: _fieldBorder(Colors.transparent),
+        disabledBorder: _fieldBorder(Colors.transparent),
+        focusedBorder: _fieldBorder(AppColors.ink, width: 1.5),
+        errorBorder: _fieldBorder(AppColors.danger),
+        focusedErrorBorder: _fieldBorder(AppColors.danger, width: 1.5),
+        labelStyle: AppTypography.sectionLabel,
+        floatingLabelStyle: AppTypography.meta,
+        hintStyle: AppTypography.row.copyWith(color: AppColors.muted),
+        helperStyle: AppTypography.meta,
+        errorStyle: AppTypography.meta.copyWith(color: AppColors.danger),
+        prefixIconColor: AppColors.muted,
+        suffixIconColor: AppColors.muted,
       ),
 
+      // Pillola scura: l'azione principale di ogni schermata.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: AppColors.ink,
+          foregroundColor: AppColors.surface,
+          disabledBackgroundColor: AppColors.stroke,
+          disabledForegroundColor: AppColors.muted,
           minimumSize: _minTapSize,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          textStyle: text.labelLarge,
+          elevation: 0,
+          shape: const StadiumBorder(),
+          textStyle: AppTypography.button,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.ink,
           minimumSize: _minTapSize,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          side: BorderSide(color: scheme.outline),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          textStyle: text.labelLarge,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.card),
+          side: const BorderSide(color: AppColors.stroke),
+          shape: const StadiumBorder(),
+          textStyle: AppTypography.button,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: AppColors.ink,
           minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          textStyle: text.labelLarge,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          shape: const StadiumBorder(),
+          textStyle: AppTypography.buttonSmall,
         ),
       ),
-
-      // Il FAB è l'azione principale della schermata: pieno di colore, non
-      // in tinta tenue come la card della scheda in uso, altrimenti i due si
-      // confondono.
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        elevation: 3,
-        highlightElevation: 6,
-        extendedTextStyle: text.labelLarge,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-      ),
-
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainer,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: scheme.secondaryContainer,
-        elevation: 0,
-        height: 72,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          final selected = states.contains(WidgetState.selected);
-          return (text.labelMedium ?? const TextStyle()).copyWith(
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-          );
-        }),
-        iconTheme: WidgetStateProperty.resolveWith(
-          (states) => IconThemeData(
-            size: 26,
-            color: states.contains(WidgetState.selected)
-                ? scheme.onSecondaryContainer
-                : scheme.onSurfaceVariant,
-          ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.ink,
+          minimumSize: const Size.square(44),
+          shape: const CircleBorder(),
         ),
       ),
 
       chipTheme: ChipThemeData(
-        backgroundColor: scheme.surfaceContainerHigh,
-        side: BorderSide(color: scheme.outlineVariant),
+        backgroundColor: AppColors.fill,
+        selectedColor: AppColors.lime,
+        side: BorderSide.none,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
         ),
-        labelStyle: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
+        labelStyle: AppTypography.chip,
+        secondaryLabelStyle: AppTypography.chipStrong,
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
+        iconTheme: const IconThemeData(color: AppColors.muted, size: 16),
       ),
 
-      // I pannelli modali coprono la pagina: raggio ampio, maniglia di
-      // trascinamento sempre presente (si chiudono anche col pollice).
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        modalBackgroundColor: scheme.surfaceContainerLow,
+      // I pannelli modali coprono la pagina: raggio 24 in alto e chiusura
+      // con la X in testata (niente maniglia — nel design non c'è).
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        modalBackgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        showDragHandle: true,
-        dragHandleColor: scheme.outlineVariant,
+        modalBarrierColor: AppColors.scrim,
+        showDragHandle: false,
+        elevation: 0,
         clipBehavior: Clip.antiAlias,
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
+            top: Radius.circular(AppRadius.sheet),
           ),
         ),
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: scheme.surfaceContainerHigh,
+        backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 3,
+        barrierColor: AppColors.scrim,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        titleTextStyle: text.titleLarge,
-        contentTextStyle: text.bodyMedium?.copyWith(
-          color: scheme.onSurfaceVariant,
-        ),
+        insetPadding: const EdgeInsets.all(AppSpacing.xl),
+        titleTextStyle: AppTypography.sheetTitle,
+        contentTextStyle: AppTypography.paragraph,
       ),
 
       popupMenuTheme: PopupMenuThemeData(
-        color: scheme.surfaceContainerHigh,
+        color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 3,
+        shadowColor: const Color(0x26000000),
+        elevation: 8,
+        menuPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        textStyle: text.bodyLarge,
+        textStyle: AppTypography.row,
       ),
 
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: scheme.inverseSurface,
-        contentTextStyle: text.bodyMedium?.copyWith(
-          color: scheme.onInverseSurface,
+        backgroundColor: AppColors.ink,
+        contentTextStyle: AppTypography.paragraph.copyWith(
+          color: AppColors.surface,
         ),
-        actionTextColor: scheme.inversePrimary,
-        insetPadding: const EdgeInsets.all(AppSpacing.lg),
-        elevation: 3,
+        actionTextColor: AppColors.lime,
+        insetPadding: const EdgeInsets.all(AppSpacing.xl),
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
       ),
 
       // Dentro una card la tile espandibile non deve disegnare le proprie
       // linee di separazione: il contenitore è già la card.
-      expansionTileTheme: ExpansionTileThemeData(
-        shape: const RoundedRectangleBorder(side: BorderSide.none),
-        collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
-        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      expansionTileTheme: const ExpansionTileThemeData(
+        shape: RoundedRectangleBorder(side: BorderSide.none),
+        collapsedShape: RoundedRectangleBorder(side: BorderSide.none),
+        tilePadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         childrenPadding: EdgeInsets.zero,
-        iconColor: scheme.primary,
-        collapsedIconColor: scheme.onSurfaceVariant,
+        iconColor: AppColors.ink,
+        collapsedIconColor: AppColors.muted,
+        backgroundColor: AppColors.surface,
+        collapsedBackgroundColor: AppColors.surface,
       ),
 
-      dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant,
+      dividerTheme: const DividerThemeData(
+        color: AppColors.stroke,
         thickness: 1,
         space: AppSpacing.xl,
       ),
 
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        linearMinHeight: 6,
+        color: AppColors.ink,
+        linearTrackColor: AppColors.stroke,
+        circularTrackColor: Colors.transparent,
+        linearMinHeight: 4,
       ),
     );
   }
 
-  static OutlineInputBorder _inputBorder(Color color, {double width = 1}) {
+  static OutlineInputBorder _fieldBorder(Color color, {double width = 1}) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.md),
       borderSide: BorderSide(color: color, width: width),
     );
   }
 
-  /// Titoli più marcati del corpo del testo: la gerarchia si legge dal peso,
-  /// non dal colore (che in dark mode perde contrasto).
-  static TextTheme _textTheme(TextTheme base) {
-    return base.copyWith(
-      displaySmall: base.displaySmall?.copyWith(fontWeight: FontWeight.w700),
-      headlineMedium: base.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w700,
-      ),
-      headlineSmall: base.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-      titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-      titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-      titleSmall: base.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-      labelLarge: base.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-    );
-  }
+  /// I ruoli Material mappati sui token del design. Le pagine usano
+  /// [AppTypography] direttamente; questo serve ai widget di framework che
+  /// pescano dal `TextTheme` (dialog, snackbar, `ListTile`, `DropdownMenu`).
+  static const TextTheme _textTheme = TextTheme(
+    displayLarge: AppTypography.clock,
+    displayMedium: AppTypography.clock,
+    displaySmall: AppTypography.clock,
+    headlineLarge: AppTypography.screenTitle,
+    headlineMedium: AppTypography.screenTitle,
+    headlineSmall: AppTypography.sheetTitleLong,
+    titleLarge: AppTypography.subtitle,
+    titleMedium: AppTypography.cardTitle,
+    titleSmall: AppTypography.blockType,
+    bodyLarge: AppTypography.row,
+    bodyMedium: AppTypography.paragraph,
+    bodySmall: AppTypography.paragraphSmall,
+    labelLarge: AppTypography.button,
+    labelMedium: AppTypography.meta,
+    labelSmall: AppTypography.chip,
+  );
 }

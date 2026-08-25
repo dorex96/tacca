@@ -22,8 +22,11 @@ class _AppState extends State<App> {
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: kDebugMode,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      // Un tema solo: il restyling ha una palette sola (vedi AppTheme). Il
+      // blocco su ThemeMode.light serve a non mostrare, su un telefono in
+      // dark mode, un'interfaccia che nessuno ha disegnato.
+      theme: AppTheme.theme,
+      themeMode: ThemeMode.light,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _router,

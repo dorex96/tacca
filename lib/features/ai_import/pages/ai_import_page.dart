@@ -4,10 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/info_banner.dart';
+import '../../../core/widgets/linear_icon.dart';
+import '../../../core/widgets/pill_button.dart';
+import '../../../core/widgets/square_icon_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/ai_import_cubit.dart';
 import '../cubit/ai_import_state.dart';
@@ -42,12 +50,26 @@ class AiImportPage extends StatelessWidget {
         );
       },
       builder: (context, state) {
-        return Scaffold(
-          appBar: AppBar(title: Text(l10n.aiImportTitle)),
+        final configured = !state.configChecked || state.isConfigured;
+        final input = state.status != AiImportStatus.processing && configured;
+
+        return AppScaffold(
+          leading: const AppBackButton(),
+          title: l10n.aiImportTitle,
+          // "Digitalizza" è l'unica azione che spende: sta nella pillola in
+          // fondo, staccata dal modulo, e non parte mai da sola (RNF-07).
+          dock: input
+              ? PillButton(
+                  label: l10n.aiImportSubmit,
+                  icon: AppIcons.cpu,
+                  onPressed: state.hasInput
+                      ? context.read<AiImportCubit>().submit
+                      : null,
+                )
+              : null,
           body: switch (state.status) {
             AiImportStatus.processing => const _ProcessingView(),
-            _ when state.configChecked && !state.isConfigured =>
-              const _NotConfiguredView(),
+            _ when !configured => const _NotConfiguredView(),
             _ => _InputView(state: state),
           },
         );
@@ -65,16 +87,17 @@ class _NotConfiguredView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return EmptyState(
-      icon: Icons.key_off_outlined,
+      icon: AppIcons.lock,
       message: l10n.aiImportNotConfiguredBody,
-      action: FilledButton.icon(
+      action: PillButton(
+        label: l10n.aiImportGoToSettings,
+        icon: AppIcons.settings,
+        expand: false,
         onPressed: () async {
           final cubit = context.read<AiImportCubit>();
           await context.push('/settings/ai');
           await cubit.refreshConfiguration();
         },
-        icon: const Icon(Icons.settings_outlined),
-        label: Text(l10n.aiImportGoToSettings),
       ),
     );
   }
@@ -86,19 +109,13 @@ class _ProcessingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: AppSpacing.xl),
-          Text(
-            l10n.aiImportProcessing,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          Text(l10n.aiImportProcessing, style: AppTypography.sectionLabel),
         ],
       ),
     );
@@ -114,19 +131,22 @@ class _InputView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<AiImportCubit>();
-    final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        0,
+        AppSpacing.xl,
+        AppSpacing.actionClearance,
+      ),
       children: [
         if (state.errorMessage != null) ...[
           InfoBanner(
-            icon: Icons.error_outline,
             tone: InfoBannerTone.alert,
             message: state.errorMessage!,
             onDismiss: cubit.dismissError,
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.sm),
         ],
         // Avviso privacy: le immagini/testi inviati lasciano il dispositivo.
         InfoBanner(message: l10n.aiSettingsPrivacyNotice),
@@ -149,61 +169,51 @@ class _InputView extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: PillButton(
+                label: l10n.aiImportSourceCamera,
+                icon: AppIcons.camera,
+                tone: PillTone.outline,
                 onPressed: cubit.addFromCamera,
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 56)),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: Text(l10n.aiImportSourceCamera),
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
-              child: OutlinedButton.icon(
+              child: PillButton(
+                label: l10n.aiImportSourceGallery,
+                icon: AppIcons.gallery,
+                tone: PillTone.outline,
                 onPressed: cubit.addFromGallery,
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 56)),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: Text(l10n.aiImportSourceGallery),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
-        TextFormField(
-          key: const ValueKey('import-text'),
-          initialValue: state.text,
-          decoration: InputDecoration(
-            labelText: l10n.aiImportTextLabel,
-            hintText: l10n.aiImportTextHint,
-            alignLabelWithHint: true,
+        LabeledField(
+          label: l10n.aiImportTextLabel,
+          child: TextFormField(
+            key: const ValueKey('import-text'),
+            initialValue: state.text,
+            style: AppTypography.paragraph.copyWith(color: AppColors.ink),
+            decoration: AppField.onBackground(hintText: l10n.aiImportTextHint),
+            minLines: 4,
+            maxLines: 12,
+            onChanged: cubit.updateText,
           ),
-          minLines: 4,
-          maxLines: 12,
-          onChanged: cubit.updateText,
         ),
-        const SizedBox(height: AppSpacing.md),
-        TextFormField(
-          key: const ValueKey('import-hint'),
-          initialValue: state.hint,
-          decoration: InputDecoration(labelText: l10n.aiImportHintLabel),
-          onChanged: cubit.updateHint,
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        FilledButton.icon(
-          onPressed: state.hasInput ? cubit.submit : null,
-          style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-          icon: const Icon(Icons.auto_awesome),
-          label: Text(l10n.aiImportSubmit),
+        const SizedBox(height: AppSpacing.card),
+        LabeledField(
+          label: l10n.aiImportHintLabel,
+          child: TextFormField(
+            key: const ValueKey('import-hint'),
+            initialValue: state.hint,
+            style: AppTypography.row,
+            decoration: AppField.onBackground(),
+            onChanged: cubit.updateHint,
+          ),
         ),
         if (!state.hasInput) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Center(
-            child: Text(
-              l10n.aiImportNoInput,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+          const SizedBox(height: AppSpacing.card),
+          Center(child: Text(l10n.aiImportNoInput, style: AppTypography.meta)),
         ],
       ],
     );
@@ -223,6 +233,7 @@ class _ImageThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
     return Stack(
       children: [
         ClipRRect(
@@ -235,20 +246,28 @@ class _ImageThumbnail extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: AppSpacing.xs,
-          right: AppSpacing.xs,
-          child: IconButton.filled(
-            iconSize: 16,
-            visualDensity: VisualDensity.compact,
-            style: IconButton.styleFrom(
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surface.withValues(alpha: 0.85),
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
+          top: 0,
+          right: 0,
+          child: Material(
+            color: AppColors.surface.withValues(alpha: 0.9),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onRemove,
+              child: Tooltip(
+                message: l10n.aiImportRemoveImage,
+                child: const SizedBox.square(
+                  dimension: 32,
+                  child: Center(
+                    child: LinearIcon(
+                      AppIcons.close,
+                      size: 16,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
             ),
-            icon: const Icon(Icons.close),
-            tooltip: l10n.aiImportRemoveImage,
-            onPressed: onRemove,
           ),
         ),
       ],

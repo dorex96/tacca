@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
+import '../../../core/design/linear_icons.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/info_banner.dart';
+import '../../../core/widgets/linear_icon.dart';
+import '../../../core/widgets/pill_button.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/square_icon_button.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/settings_state.dart';
@@ -33,8 +42,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.aiSettingsTitle)),
+
+    return AppScaffold(
+      leading: const AppBackButton(),
+      title: l10n.aiSettingsTitle,
       body: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, state) {
           if (state.isLoading) {
@@ -48,9 +59,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
+              AppSpacing.xl,
+              0,
+              AppSpacing.xl,
               AppSpacing.xxl,
             ),
             children: [
@@ -58,48 +69,76 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
               // all'AI lasciano il dispositivo.
               InfoBanner(message: l10n.aiSettingsPrivacyNotice),
               if (!state.hasApiKey) ...[
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 InfoBanner(
-                  icon: Icons.lock_outline,
+                  icon: AppIcons.lock,
                   tone: InfoBannerTone.alert,
                   message: l10n.aiSettingsDisabledBanner,
                 ),
               ],
-              SectionHeader(label: l10n.aiSettingsProviderLabel),
-              const Card(
-                child: ListTile(
-                  leading: Icon(Icons.cloud_outlined),
-                  title: Text('OpenRouter'),
+              Section(
+                label: l10n.aiSettingsProviderLabel,
+                child: SurfaceCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.card,
+                    vertical: AppSpacing.lg,
+                  ),
+                  child: const Row(
+                    children: [
+                      LinearIcon(
+                        AppIcons.cpu,
+                        size: 20,
+                        color: AppColors.muted,
+                      ),
+                      SizedBox(width: AppSpacing.md),
+                      Text('OpenRouter', style: AppTypography.row),
+                    ],
+                  ),
                 ),
               ),
-              SectionHeader(label: l10n.aiSettingsKeyLabel),
-              if (state.hasApiKey && !_editingKey)
-                _SavedKeyTile(
-                  onReplace: () => setState(() => _editingKey = true),
-                  onRemove: () => _confirmRemoveKey(context),
-                )
-              else
-                _KeyEditor(
-                  controller: _keyController,
-                  onSave: () async {
-                    await cubit.saveApiKey(_keyController.text);
-                    _keyController.clear();
-                    if (mounted) setState(() => _editingKey = false);
+              Section(
+                label: l10n.aiSettingsKeyLabel,
+                child: state.hasApiKey && !_editingKey
+                    ? _SavedKeyTile(
+                        onReplace: () => setState(() => _editingKey = true),
+                        onRemove: () => _confirmRemoveKey(context),
+                      )
+                    : _KeyEditor(
+                        controller: _keyController,
+                        onSave: () async {
+                          await cubit.saveApiKey(_keyController.text);
+                          _keyController.clear();
+                          if (mounted) setState(() => _editingKey = false);
+                        },
+                      ),
+              ),
+              Section(
+                label: l10n.aiSettingsModelLabel,
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedModel?.id,
+                  isExpanded: true,
+                  style: AppTypography.row,
+                  borderRadius: BorderRadius.circular(AppSpacing.card),
+                  icon: const LinearIcon(
+                    AppIcons.chevronDown,
+                    size: 20,
+                    color: AppColors.muted,
+                  ),
+                  decoration: AppField.onBackground(),
+                  items: [
+                    for (final model in catalog.models)
+                      DropdownMenuItem(
+                        value: model.id,
+                        child: Text(
+                          model.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) cubit.selectModel(value);
                   },
                 ),
-              SectionHeader(label: l10n.aiSettingsModelLabel),
-              DropdownButtonFormField<String>(
-                initialValue: selectedModel?.id,
-                decoration: InputDecoration(
-                  labelText: l10n.aiSettingsModelLabel,
-                ),
-                items: [
-                  for (final model in catalog.models)
-                    DropdownMenuItem(value: model.id, child: Text(model.label)),
-                ],
-                onChanged: (value) {
-                  if (value != null) cubit.selectModel(value);
-                },
               ),
               const SizedBox(height: AppSpacing.xl),
               _TestConnectionSection(state: state),
@@ -133,85 +172,110 @@ class _SavedKeyTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.check_circle, color: theme.colorScheme.primary),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    l10n.aiSettingsKeySaved,
-                    style: theme.textTheme.bodyMedium,
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 32,
+                width: 32,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.lime,
+                ),
+                child: const Center(
+                  child: LinearIcon(
+                    AppIcons.check,
+                    size: 18,
+                    color: AppColors.ink,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  l10n.aiSettingsKeySaved,
+                  style: AppTypography.paragraph,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: PillButton.compact(
+                  label: l10n.aiSettingsKeyReplace,
+                  tone: PillTone.outline,
+                  expand: true,
                   onPressed: onReplace,
-                  child: Text(l10n.aiSettingsKeyReplace),
                 ),
-                TextButton(
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: PillButton.compact(
+                  label: l10n.commonDelete,
+                  tone: PillTone.danger,
+                  expand: true,
                   onPressed: onRemove,
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ),
-                  child: Text(l10n.commonDelete),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _KeyEditor extends StatelessWidget {
+/// Inserimento della key: nascosta di default, con l'occhio per rileggerla
+/// prima di salvare (si incolla, e un carattere di troppo non si vede).
+class _KeyEditor extends StatefulWidget {
   const _KeyEditor({required this.controller, required this.onSave});
 
   final TextEditingController controller;
   final VoidCallback onSave;
 
   @override
+  State<_KeyEditor> createState() => _KeyEditorState();
+}
+
+class _KeyEditorState extends State<_KeyEditor> {
+  bool _obscured = true;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            obscureText: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: InputDecoration(
-              hintText: l10n.aiSettingsKeyHint,
-              prefixIcon: const Icon(Icons.key_outlined),
+        TextField(
+          controller: widget.controller,
+          obscureText: _obscured,
+          autocorrect: false,
+          enableSuggestions: false,
+          style: AppTypography.row,
+          decoration: AppField.onBackground(
+            hintText: l10n.aiSettingsKeyHint,
+            prefixIcon: const LinearIcon(
+              AppIcons.lock,
+              size: 20,
+              color: AppColors.muted,
+            ),
+            suffixIcon: GhostIconButton(
+              icon: AppIcons.eye,
+              foreground: AppColors.muted,
+              tooltip: l10n.aiSettingsKeyLabel,
+              onPressed: () => setState(() => _obscured = !_obscured),
             ),
           ),
         ),
-        const SizedBox(width: AppSpacing.md),
-        FilledButton(
-          onPressed: onSave,
-          style: FilledButton.styleFrom(minimumSize: const Size(64, 56)),
-          child: Text(l10n.commonSave),
-        ),
+        const SizedBox(height: AppSpacing.sm),
+        PillButton(label: l10n.commonSave, onPressed: widget.onSave),
       ],
     );
   }
@@ -225,47 +289,40 @@ class _TestConnectionSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final testing = state.testStatus == AiConnectionTestStatus.testing;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FilledButton.tonalIcon(
+        PillButton(
+          label: l10n.aiSettingsTestConnection,
+          icon: AppIcons.shield,
+          tone: PillTone.outline,
           onPressed: state.hasApiKey && !testing
               ? () => context.read<SettingsCubit>().testConnection()
               : null,
-          style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-          icon: testing
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.wifi_tethering),
-          label: Text(l10n.aiSettingsTestConnection),
         ),
         const SizedBox(height: AppSpacing.md),
         switch (state.testStatus) {
+          AiConnectionTestStatus.testing => const Center(
+            child: SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
           AiConnectionTestStatus.success => Row(
             children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 20,
-                color: theme.colorScheme.primary,
-              ),
+              const LinearIcon(AppIcons.check, size: 20, color: AppColors.ink),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l10n.aiSettingsTestSuccess,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
+                  style: AppTypography.paragraph,
                 ),
               ),
             ],
           ),
           AiConnectionTestStatus.failure => InfoBanner(
-            icon: Icons.error_outline,
             tone: InfoBannerTone.alert,
             message: state.testErrorMessage ?? '',
           ),

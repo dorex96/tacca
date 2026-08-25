@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/app_colors.dart';
 import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
+import '../../../core/design/app_typography.dart';
 import '../../../core/extensions/duration_format.dart';
 import '../../../core/extensions/log_set_format.dart';
+import '../../../core/widgets/app_field.dart';
+import '../../../core/widgets/app_sheet.dart';
+import '../../../core/widgets/pill_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../bloc/session_item.dart';
 
@@ -25,21 +30,15 @@ Future<SessionSummaryConfirmed?> showSessionSummarySheet(
   required List<SessionItem> items,
   String? initialNotes,
 }) {
-  return showModalBottomSheet<SessionSummaryConfirmed>(
-    context: context,
-    isScrollControlled: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: _SessionSummarySheet(
-        elapsed: elapsed,
-        completedExercises: completedExercises,
-        totalExercises: totalExercises,
-        loggedSets: loggedSets,
-        items: items,
-        initialNotes: initialNotes,
-      ),
+  return showAppSheet<SessionSummaryConfirmed>(
+    context,
+    builder: (context) => _SessionSummarySheet(
+      elapsed: elapsed,
+      completedExercises: completedExercises,
+      totalExercises: totalExercises,
+      loggedSets: loggedSets,
+      items: items,
+      initialNotes: initialNotes,
     ),
   );
 }
@@ -79,129 +78,94 @@ class _SessionSummarySheetState extends State<_SessionSummarySheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final performed = widget.items
         .where((item) => item.entry.sets.isNotEmpty)
         .toList();
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.lg,
-            AppSpacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return AppSheet(
+      title: l10n.workoutSummaryTitle,
+      scrollable: true,
+      children: [
+        // I tre numeri che riassumono la sessione, alla stessa altezza: si
+        // leggono in un colpo d'occhio.
+        IntrinsicHeight(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l10n.workoutSummaryTitle, style: theme.textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.lg),
-              // I tre numeri che riassumono la sessione, alla stessa
-              // altezza: si leggono in un colpo d'occhio.
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Stat(
-                      label: l10n.workoutSummaryDuration,
-                      value: widget.elapsed.compact,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    _Stat(
-                      label: l10n.workoutSummaryExercises,
-                      value:
-                          '${widget.completedExercises}/'
-                          '${widget.totalExercises}',
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    _Stat(
-                      label: l10n.workoutSummarySets,
-                      value: '${widget.loggedSets}',
-                    ),
-                  ],
-                ),
+              _Stat(
+                label: l10n.workoutSummaryDuration,
+                value: widget.elapsed.compact,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final item in performed)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.name,
-                                style: theme.textTheme.bodyLarge,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Text(
-                                item.completedSets
-                                    .map((set) => set.summary)
-                                    .join(' · '),
-                                textAlign: TextAlign.end,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
+              const SizedBox(width: AppSpacing.sm),
+              _Stat(
+                label: l10n.workoutSummaryExercises,
+                value: '${widget.completedExercises}/${widget.totalExercises}',
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                key: const ValueKey('session-notes'),
-                controller: _notes,
-                minLines: 1,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: l10n.workoutSummaryNotesLabel,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.commonContinue),
-                  ),
-                  const Spacer(),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(160, 52),
-                    ),
-                    onPressed: () => Navigator.of(context).pop(
-                      SessionSummaryConfirmed(
-                        _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-                      ),
-                    ),
-                    icon: const Icon(Icons.check),
-                    label: Text(l10n.workoutSummaryConfirm),
-                  ),
-                ],
+              const SizedBox(width: AppSpacing.sm),
+              _Stat(
+                label: l10n.workoutSummarySets,
+                value: '${widget.loggedSets}',
               ),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.card),
+        for (final item in performed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Text(item.name, style: AppTypography.row)),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    item.completedSets.map((set) => set.summary).join(' · '),
+                    textAlign: TextAlign.end,
+                    style: AppTypography.meta,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        FieldLabel(l10n.workoutSummaryNotesLabel),
+        TextField(
+          key: const ValueKey('session-notes'),
+          controller: _notes,
+          minLines: 1,
+          maxLines: 3,
+          style: AppTypography.paragraph.copyWith(color: AppColors.ink),
+          decoration: AppField.inset(),
+        ),
+        const SizedBox(height: AppSpacing.card),
+        Row(
+          children: [
+            PillButton(
+              label: l10n.commonContinue,
+              tone: PillTone.outline,
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: PillButton(
+                label: l10n.workoutSummaryConfirm,
+                onPressed: () => Navigator.of(context).pop(
+                  SessionSummaryConfirmed(
+                    _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
+/// Un numero del riepilogo: valore grande sopra, etichetta sotto.
 class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value});
 
@@ -210,32 +174,24 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
-          vertical: AppSpacing.md,
+          vertical: AppSpacing.lg,
         ),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
+          color: AppColors.fill,
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Column(
           children: [
-            Text(
-              value,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
+            Text(value, style: AppTypography.numericField),
             const SizedBox(height: AppSpacing.xs),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: AppTypography.caption,
             ),
           ],
         ),

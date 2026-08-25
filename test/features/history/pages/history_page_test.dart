@@ -144,7 +144,7 @@ void main() {
     );
     await pumpHistory(tester);
 
-    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.tap(find.byTooltip('Elimina'));
     await tester.pumpAndSettle();
     expect(find.text('Eliminare la sessione?'), findsOneWidget);
 
@@ -153,13 +153,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Upper / Lower'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.tap(find.byTooltip('Elimina'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('Elimina'),
-      ),
+      find.descendant(of: find.byType(Dialog), matching: find.text('Elimina')),
     );
     await tester.pumpAndSettle();
 
