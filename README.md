@@ -26,9 +26,9 @@ Personal project, pre-1.0. What is actually built:
 | Plans archive, manual editor | ✅ done |
 | Workout session, timers, crash recovery | ✅ done |
 | History | ✅ done |
-| AI import from photo / gallery / pasted text | ✅ done, **OpenRouter and Anthropic** |
+| AI import from photo / gallery / pasted text | ✅ done, **OpenRouter, Anthropic and Google Gemini** |
 | AI chat to create/edit a plan | 🚫 not planned — importing a plan and then editing it by hand covers the need |
-| Providers other than those two | ❌ not built — `AiProvider` is the seam where they plug in |
+| Providers other than those three | ❌ not built — `AiProvider` is the seam where they plug in |
 
 ## Features
 
@@ -56,13 +56,13 @@ flutter run
 
 ### AI setup (optional)
 
-The app ships no API key and calls no service on its own. To enable the import: **Impostazioni → Intelligenza artificiale**, choose a provider — [OpenRouter](https://openrouter.ai) or [Anthropic](https://console.anthropic.com) — paste its key, pick a model, and use *Prova connessione* to verify it. Key and model are stored **per provider**, so switching back and forth costs nothing: the key is kept in the platform secure storage (iOS Keychain / Android Keystore) — never logged, never exported, never written to the database. Requests are billed to *your* account with the provider you picked.
+The app ships no API key and calls no service on its own. To enable the import: **Impostazioni → Intelligenza artificiale**, choose a provider — [OpenRouter](https://openrouter.ai), [Anthropic](https://console.anthropic.com) or [Google Gemini](https://aistudio.google.com/apikey) — paste its key, pick a model, and use *Prova connessione* to verify it. Key and model are stored **per provider**, so switching back and forth costs nothing: the key is kept in the platform secure storage (iOS Keychain / Android Keystore) — never logged, never exported, never written to the database. Requests are billed to *your* account with the provider you picked.
 
 Providers and models are **configuration, not code**: edit [`assets/ai/models.json`](assets/ai/models.json), which is read once at startup.
 
 | Provider field | Meaning |
 | --- | --- |
-| `id` | `openrouter` or `anthropic` — the two implementations; any other id is ignored |
+| `id` | `openrouter`, `anthropic` or `google` — the three implementations; any other id is ignored |
 | `label` | Name shown in the settings dropdown, and in the privacy notice |
 | `keyHint` | Placeholder of the API key field (e.g. `sk-ant-…`) |
 | `defaultModelId` | The model used before the user picks one |
@@ -70,13 +70,13 @@ Providers and models are **configuration, not code**: edit [`assets/ai/models.js
 
 | Model field | Meaning |
 | --- | --- |
-| `id` | Model id at the provider (`anthropic/claude-sonnet-5` on OpenRouter, `claude-opus-5` on Anthropic) |
+| `id` | Model id at the provider (`anthropic/claude-sonnet-5` on OpenRouter, `claude-opus-5` on Anthropic, `gemini-3.7-flash` on Google) |
 | `label` | Name shown in the settings dropdown |
 | `supportsVision` | `false` ⇒ photos are OCR'd on-device and only text is sent |
 | `supportsJsonSchema` | `false` ⇒ falls back to prompt-based JSON extraction |
 | `maxOutputTokens` | Output budget for one answer (default 8192); too low truncates long plans |
 | `disableReasoning` | OpenRouter only: sends `reasoning: {effort: none}` — reasoning tokens eat the same budget |
-| `effort` | Anthropic only: `output_config.effort` (`low`…`max`); omit it for Claude Haiku 4.5, which rejects the parameter |
+| `effort` | Where thinking is dosed rather than switched off: `output_config.effort` on Anthropic (`low`…`max`), `thinkingConfig.thinkingLevel` on Google (`low`/`medium`/`high`). Omit it for Claude Haiku 4.5, which rejects the parameter; Gemini 3.7 Flash rejects `minimal` |
 
 Top-level, `defaultProviderId` picks the provider preselected before the user chooses.
 
@@ -89,7 +89,7 @@ Widgets (features/*/pages, widgets)
    └─> Cubit / Bloc (feature state)
          └─> Repository interfaces (PlanRepository, WorkoutLogRepository, SettingsRepository)
                ├─> ObjectBox Store / Box
-               └─> AiProvider ──> dio ──> OpenRouter | Anthropic
+               └─> AiProvider ──> dio ──> OpenRouter | Anthropic | Google
 ```
 
 `AiProvider` is one interface with one implementation per provider; the shared §6.2 pipeline (transcribe → structure → retry → free-text fallback) lives in `ChatPlanProvider`, so a provider only has to speak its own protocol. Which one runs is decided per call by `RoutingAiProvider`, from the choice saved in settings.
@@ -137,7 +137,6 @@ bash <(curl -s https://raw.githubusercontent.com/objectbox/objectbox-dart/main/i
 
 ## Roadmap
 
-- Additional providers behind `AiProvider` (Gemini)
 - Locales beyond Italian
 - Verifying background timer punctuality on iOS
 

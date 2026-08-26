@@ -7,7 +7,8 @@ import 'ai_provider.dart';
 /// Un modello offerto all'utente nelle Impostazioni AI.
 class AiModelOption {
   /// Identificatore del modello presso il suo provider (es.
-  /// `google/gemini-3.7-flash` su OpenRouter, `claude-opus-5` su Anthropic).
+  /// `google/gemini-3.7-flash` su OpenRouter, `claude-opus-5` su Anthropic,
+  /// `gemini-3.7-flash` su Google).
   final String id;
 
   /// Nome mostrato in UI.
@@ -18,8 +19,8 @@ class AiModelOption {
 
   /// Il modello supporta lo structured output nativo del suo provider
   /// (`response_format: json_schema` su OpenRouter, `output_config.format` su
-  /// Anthropic); altrimenti la richiesta usa il fallback prompt-based (§6.2,
-  /// rischio S-02).
+  /// Anthropic, `generationConfig.responseSchema` su Google); altrimenti la
+  /// richiesta usa il fallback prompt-based (§6.2, rischio S-02).
   final bool supportsJsonSchema;
 
   /// Tetto di token di output inviato al provider. Deve stare largo: una
@@ -36,10 +37,12 @@ class AiModelOption {
   /// l'output vero. Ignorato dagli altri provider.
   final bool disableReasoning;
 
-  /// `output_config.effort` di Anthropic (`low`…`max`), l'equivalente della
-  /// riga sopra sui modelli Claude, dove il pensiero non si spegne ma si
-  /// dosa. `null` lascia il default del modello; Claude Haiku 4.5 non accetta
-  /// il parametro e va lasciato senza. Ignorato dagli altri provider.
+  /// L'equivalente della riga sopra dove il pensiero non si spegne ma si
+  /// dosa: `output_config.effort` su Anthropic (`low`…`max`) e
+  /// `generationConfig.thinkingConfig.thinkingLevel` su Google (`low`,
+  /// `medium`, `high`). `null` lascia il default del modello; Claude Haiku
+  /// 4.5 non accetta il parametro e va lasciato senza, e Gemini 3.7 Flash
+  /// rifiuta `minimal`. Ignorato da OpenRouter.
   final String? effort;
 
   const AiModelOption({

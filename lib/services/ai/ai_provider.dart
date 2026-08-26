@@ -37,7 +37,8 @@ class PlanExtraction {
 /// salvata dagli utenti.
 enum AiProviderId {
   openRouter('openrouter'),
-  anthropic('anthropic');
+  anthropic('anthropic'),
+  google('google');
 
   const AiProviderId(this.value);
 
@@ -53,7 +54,8 @@ enum AiProviderId {
   }
 }
 
-/// Contratto dei provider AI (§6.1), implementato da OpenRouter e Anthropic.
+/// Contratto dei provider AI (§6.1), implementato da OpenRouter, Anthropic
+/// e Google.
 /// Il provider effettivo dipende dalla scelta dell'utente nelle impostazioni:
 /// la UI e i cubit dipendono solo da questa interfaccia.
 abstract interface class AiProvider {

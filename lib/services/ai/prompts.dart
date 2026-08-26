@@ -148,7 +148,8 @@ Nota come i quattro esercizi consecutivi stiano in un blocco solo:
 /// Schema della scheda (§5.3), usato come structured output dai modelli che
 /// lo supportano (`response_format: json_schema` su OpenRouter,
 /// `output_config.format` su Anthropic, che però non accetta i vincoli
-/// numerici e li fa togliere al provider).
+/// numerici e li fa togliere al provider, `generationConfig.responseSchema`
+/// su Google, che è OpenAPI e non JSON Schema e se lo fa tradurre).
 const Map<String, dynamic> planJsonSchema = {
   'type': 'object',
   'additionalProperties': false,
