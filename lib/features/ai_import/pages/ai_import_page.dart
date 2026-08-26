@@ -69,7 +69,9 @@ class AiImportPage extends StatelessWidget {
               : null,
           body: switch (state.status) {
             AiImportStatus.processing => const _ProcessingView(),
-            _ when !configured => const _NotConfiguredView(),
+            _ when !configured => _NotConfiguredView(
+              providerLabel: state.providerLabel,
+            ),
             _ => _InputView(state: state),
           },
         );
@@ -81,14 +83,17 @@ class AiImportPage extends StatelessWidget {
 /// Le funzioni AI non si nascondono: si spiegano e si rimanda alle
 /// impostazioni (RF-08).
 class _NotConfiguredView extends StatelessWidget {
-  const _NotConfiguredView();
+  const _NotConfiguredView({required this.providerLabel});
+
+  /// Il provider scelto: la spiegazione dice *quale* key manca.
+  final String providerLabel;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return EmptyState(
       icon: AppIcons.lock,
-      message: l10n.aiImportNotConfiguredBody,
+      message: l10n.aiImportNotConfiguredBody(providerLabel),
       action: PillButton(
         label: l10n.aiImportGoToSettings,
         icon: AppIcons.settings,
@@ -148,9 +153,15 @@ class _InputView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
-        // Avviso privacy: le immagini/testi inviati lasciano il dispositivo.
-        InfoBanner(message: l10n.aiSettingsPrivacyNotice),
-        const SizedBox(height: AppSpacing.xl),
+        // Avviso privacy: le immagini/testi inviati lasciano il dispositivo,
+        // verso il provider scelto nelle impostazioni. Aspetta di sapere
+        // quale: nominarlo è metà dell'avviso.
+        if (state.configChecked) ...[
+          InfoBanner(
+            message: l10n.aiSettingsPrivacyNotice(state.providerLabel),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+        ],
         if (state.images.isNotEmpty) ...[
           Wrap(
             spacing: AppSpacing.sm,

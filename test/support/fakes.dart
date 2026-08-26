@@ -202,23 +202,61 @@ LogSet buildLogSet(int number, {double? weightKg, String? reps}) => LogSet(
 );
 
 /// [SettingsRepository] in memoria: nessun secure storage nei test.
+///
+/// Key e modello sono per provider come in produzione; [apiKey] e [modelId]
+/// restano scorciatoie per il provider di default dei test ([providerId]).
 class FakeSettingsRepository implements SettingsRepository {
-  FakeSettingsRepository({this.apiKey, this.modelId});
-
-  String? apiKey;
-  String? modelId;
-
-  @override
-  Future<String?> getOpenRouterApiKey() async => apiKey;
-
-  @override
-  Future<void> setOpenRouterApiKey(String? key) async {
-    apiKey = (key == null || key.trim().isEmpty) ? null : key.trim();
+  FakeSettingsRepository({
+    String? apiKey,
+    String? modelId,
+    this.providerId,
+    this.defaultProviderId = 'openrouter',
+  }) {
+    if (apiKey != null) apiKeys[defaultProviderId] = apiKey;
+    if (modelId != null) modelIds[defaultProviderId] = modelId;
   }
 
-  @override
-  Future<String?> getOpenRouterModelId() async => modelId;
+  /// Provider su cui puntano [apiKey] e [modelId].
+  final String defaultProviderId;
+
+  String? providerId;
+  final Map<String, String> apiKeys = {};
+  final Map<String, String> modelIds = {};
+
+  String? get apiKey => apiKeys[defaultProviderId];
+
+  set apiKey(String? value) => _put(apiKeys, defaultProviderId, value);
+
+  String? get modelId => modelIds[defaultProviderId];
+
+  set modelId(String? value) => _put(modelIds, defaultProviderId, value);
 
   @override
-  Future<void> setOpenRouterModelId(String? id) async => modelId = id;
+  Future<String?> getAiProviderId() async => providerId;
+
+  @override
+  Future<void> setAiProviderId(String? id) async => providerId = id;
+
+  @override
+  Future<String?> getApiKey(String providerId) async => apiKeys[providerId];
+
+  @override
+  Future<void> setApiKey(String providerId, String? key) async =>
+      _put(apiKeys, providerId, key);
+
+  @override
+  Future<String?> getModelId(String providerId) async => modelIds[providerId];
+
+  @override
+  Future<void> setModelId(String providerId, String? modelId) async =>
+      _put(modelIds, providerId, modelId);
+
+  void _put(Map<String, String> into, String key, String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      into.remove(key);
+    } else {
+      into[key] = trimmed;
+    }
+  }
 }

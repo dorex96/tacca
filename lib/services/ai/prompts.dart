@@ -145,8 +145,10 @@ Nota come i quattro esercizi consecutivi stiano in un blocco solo:
 ```
 ''';
 
-/// Schema della scheda (§5.3), usato come `response_format: json_schema`
-/// per i modelli OpenRouter che lo supportano.
+/// Schema della scheda (§5.3), usato come structured output dai modelli che
+/// lo supportano (`response_format: json_schema` su OpenRouter,
+/// `output_config.format` su Anthropic, che però non accetta i vincoli
+/// numerici e li fa togliere al provider).
 const Map<String, dynamic> planJsonSchema = {
   'type': 'object',
   'additionalProperties': false,

@@ -31,7 +31,7 @@ import '../features/workout/cubit/resume_session_cubit.dart';
 import '../features/workout/pages/workout_session_page.dart';
 import '../l10n/app_localizations.dart';
 import '../services/ai/ai_provider.dart';
-import '../services/ai/model_catalog.dart';
+import '../services/ai/ai_selection.dart';
 import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
@@ -84,7 +84,7 @@ GoRouter createRouter() {
                       create: (context) => SettingsCubit(
                         settings: context.read<SettingsRepository>(),
                         provider: context.read<AiProvider>(),
-                        catalog: context.read<AiModelCatalog>(),
+                        selection: context.read<AiSelectionResolver>(),
                       ),
                       child: const AiSettingsPage(),
                     ),
@@ -113,8 +113,7 @@ GoRouter createRouter() {
             provider: context.read<AiProvider>(),
             imageInput: context.read<ImageInput>(),
             imageStore: context.read<PlanImageStore>(),
-            settings: context.read<SettingsRepository>(),
-            catalog: context.read<AiModelCatalog>(),
+            selection: context.read<AiSelectionResolver>(),
             ocr: context.read<OcrService>(),
           ),
           child: const AiImportPage(),

@@ -29,9 +29,33 @@ class PlanExtraction {
   });
 }
 
-/// Contratto dei provider AI (§6.1). In v1 l'unica implementazione è
-/// OpenRouter; l'interfaccia resta il punto di aggancio per Anthropic e
-/// Gemini quando verranno aggiunti.
+/// I provider AI con un'implementazione: sono gli unici `id` che
+/// `assets/ai/models.json` può nominare.
+///
+/// [value] è al tempo stesso l'id nel JSON e il prefisso delle chiavi nel
+/// secure storage (`ai.<value>.apiKey`): cambiarlo scollega la key già
+/// salvata dagli utenti.
+enum AiProviderId {
+  openRouter('openrouter'),
+  anthropic('anthropic');
+
+  const AiProviderId(this.value);
+
+  final String value;
+
+  /// `null` se il valore non corrisponde a nessun provider implementato:
+  /// il catalogo scarta la voce invece di offrire un provider che non c'è.
+  static AiProviderId? fromValue(String? value) {
+    for (final id in values) {
+      if (id.value == value) return id;
+    }
+    return null;
+  }
+}
+
+/// Contratto dei provider AI (§6.1), implementato da OpenRouter e Anthropic.
+/// Il provider effettivo dipende dalla scelta dell'utente nelle impostazioni:
+/// la UI e i cubit dipendono solo da questa interfaccia.
 abstract interface class AiProvider {
   /// Estrae una scheda strutturata da immagini e/o testo. Nessuna chiamata
   /// avviene senza un'azione esplicita dell'utente (RNF-07).

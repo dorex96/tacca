@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:tacca/core/errors/ai_exception.dart';
 import 'package:tacca/data/entities/block.dart';
 import 'package:tacca/services/ai/ai_provider.dart';
+import 'package:tacca/services/ai/ai_selection.dart';
 import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:tacca/services/ai/providers/open_router_provider.dart';
 import 'package:dio/dio.dart';
@@ -15,20 +16,28 @@ import '../../support/fakes.dart';
 class _MockAdapter extends Mock implements HttpClientAdapter {}
 
 const _catalog = AiModelCatalog(
-  defaultModelId: 'schema/model',
-  models: [
-    AiModelOption(
-      id: 'schema/model',
-      label: 'Con schema',
-      supportsVision: true,
-      supportsJsonSchema: true,
-      maxOutputTokens: 12345,
-    ),
-    AiModelOption(id: 'plain/model', label: 'Senza schema'),
-    AiModelOption(
-      id: 'reasoning/model',
-      label: 'Con reasoning da disattivare',
-      disableReasoning: true,
+  defaultProviderId: AiProviderId.openRouter,
+  providers: [
+    AiProviderOption(
+      id: AiProviderId.openRouter,
+      label: 'OpenRouter',
+      defaultModelId: 'schema/model',
+      models: [
+        AiModelOption(
+          id: 'schema/model',
+          label: 'Con schema',
+          supportsVision: true,
+          supportsJsonSchema: true,
+          maxOutputTokens: 12345,
+        ),
+        AiModelOption(id: 'plain/model', label: 'Senza schema'),
+        AiModelOption(
+          id: 'reasoning/model',
+          label: 'Con reasoning da disattivare',
+          disableReasoning: true,
+        ),
+        AiModelOption(id: 'qualcuno/modello:free', label: 'Gratuito'),
+      ],
     ),
   ],
 );
@@ -67,8 +76,7 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'https://openrouter.ai/api/v1'))
       ..httpClientAdapter = adapter;
     provider = OpenRouterProvider(
-      settings: settings,
-      catalog: _catalog,
+      selection: AiSelectionResolver(settings: settings, catalog: _catalog),
       dio: dio,
     );
   });
@@ -130,6 +138,19 @@ void main() {
 
         final body = requests.single.data as Map<String, dynamic>;
         expect(body['max_tokens'], AiModelOption.defaultMaxOutputTokens);
+      },
+    );
+
+    test(
+      'un modello salvato che non è più nel catalogo ricade sul default',
+      () async {
+        settings.modelId = 'sparito/dal-catalogo';
+        enqueueResponses([ok(_validPlanJson)]);
+
+        await provider.extractPlan(text: 'Panca 4x8');
+
+        final body = requests.single.data as Map<String, dynamic>;
+        expect(body['model'], 'schema/model');
       },
     );
 

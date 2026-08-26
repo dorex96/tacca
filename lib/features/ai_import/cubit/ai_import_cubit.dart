@@ -3,9 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/errors/ai_exception.dart';
-import '../../../data/repositories/settings_repository.dart';
 import '../../../services/ai/ai_provider.dart';
-import '../../../services/ai/model_catalog.dart';
+import '../../../services/ai/ai_selection.dart';
 import '../../../services/ai/plan_parser.dart';
 import '../../../services/images/image_input.dart';
 import '../../../services/images/ocr_service.dart';
@@ -22,15 +21,13 @@ class AiImportCubit extends Cubit<AiImportState> {
     required AiProvider provider,
     required ImageInput imageInput,
     required PlanImageStore imageStore,
-    required SettingsRepository settings,
-    required AiModelCatalog catalog,
+    required AiSelectionResolver selection,
     required OcrService ocr,
     PlanParser parser = const PlanParser(),
   }) : _provider = provider,
        _imageInput = imageInput,
        _imageStore = imageStore,
-       _settings = settings,
-       _catalog = catalog,
+       _selection = selection,
        _ocr = ocr,
        _parser = parser,
        super(const AiImportState()) {
@@ -40,14 +37,19 @@ class AiImportCubit extends Cubit<AiImportState> {
   final AiProvider _provider;
   final ImageInput _imageInput;
   final PlanImageStore _imageStore;
-  final SettingsRepository _settings;
-  final AiModelCatalog _catalog;
+  final AiSelectionResolver _selection;
   final OcrService _ocr;
   final PlanParser _parser;
 
   Future<void> _checkConfiguration() async {
-    final apiKey = await _settings.getOpenRouterApiKey();
-    emit(state.copyWith(configChecked: true, isConfigured: apiKey != null));
+    final selection = await _selection.resolve();
+    emit(
+      state.copyWith(
+        configChecked: true,
+        isConfigured: selection.isConfigured,
+        providerLabel: selection.provider.label,
+      ),
+    );
   }
 
   /// Da richiamare al ritorno dalle impostazioni.
@@ -97,10 +99,8 @@ class AiImportCubit extends Cubit<AiImportState> {
       var usedOcr = false;
 
       if (images.isNotEmpty) {
-        final modelId =
-            await _settings.getOpenRouterModelId() ?? _catalog.defaultModelId;
-        final model = _catalog.byId(modelId);
-        if (model != null && !model.supportsVision) {
+        final model = (await _selection.resolve()).model;
+        if (!model.supportsVision) {
           // Il modello non accetta immagini: le leggiamo noi via OCR
           // on-device e mandiamo solo testo, invece di bloccare l'import.
           final ocrText = await _recognizeText(images);
