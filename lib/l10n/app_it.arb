@@ -40,11 +40,16 @@
   "aiSettingsTitle": "Configurazione AI",
   "@aiSettingsTitle": { "description": "Titolo della pagina di configurazione AI (RF-08)." },
   "aiSettingsProviderLabel": "Provider",
-  "@aiSettingsProviderLabel": { "description": "Etichetta della riga che mostra il provider AI in uso." },
-  "aiSettingsKeyLabel": "API key OpenRouter",
-  "@aiSettingsKeyLabel": { "description": "Etichetta della sezione API key." },
+  "@aiSettingsProviderLabel": { "description": "Etichetta del selettore del provider AI." },
+  "aiSettingsKeyLabel": "API key {provider}",
+  "@aiSettingsKeyLabel": {
+    "description": "Etichetta della sezione API key, con il nome del provider selezionato.",
+    "placeholders": { "provider": { "type": "String" } }
+  },
   "aiSettingsKeyHint": "sk-or-…",
   "@aiSettingsKeyHint": { "description": "Placeholder del campo API key." },
+  "aiSettingsKeyReveal": "Mostra la API key",
+  "@aiSettingsKeyReveal": { "description": "Tooltip del pulsante che mostra o nasconde la key mentre la si incolla." },
   "aiSettingsKeySaved": "API key salvata nel portachiavi del dispositivo.",
   "@aiSettingsKeySaved": { "description": "Stato mostrato quando una key è già salvata in secure storage." },
   "aiSettingsKeyReplace": "Sostituisci",
@@ -59,8 +64,11 @@
   "@aiSettingsTestConnection": { "description": "Pulsante che verifica la validità della key salvata (RF-08)." },
   "aiSettingsTestSuccess": "Connessione riuscita: la key è valida.",
   "@aiSettingsTestSuccess": { "description": "Esito positivo del test di connessione." },
-  "aiSettingsPrivacyNotice": "Le immagini e i testi inviati per la digitalizzazione vengono trasmessi a OpenRouter e al modello selezionato.",
-  "@aiSettingsPrivacyNotice": { "description": "Avviso privacy obbligatorio di RF-08: i contenuti inviati all'AI lasciano il dispositivo." },
+  "aiSettingsPrivacyNotice": "Le immagini e i testi inviati per la digitalizzazione vengono trasmessi a {provider} e al modello selezionato.",
+  "@aiSettingsPrivacyNotice": {
+    "description": "Avviso privacy obbligatorio di RF-08: i contenuti inviati all'AI lasciano il dispositivo, verso il provider selezionato.",
+    "placeholders": { "provider": { "type": "String" } }
+  },
   "aiSettingsDisabledBanner": "Le funzioni AI sono disabilitate finché non salvi una API key.",
   "@aiSettingsDisabledBanner": { "description": "Banner mostrato quando nessuna key è configurata." },
 
@@ -82,8 +90,11 @@
   "@aiImportProcessing": { "description": "Indicatore mostrato durante compressione e chiamata AI." },
   "aiImportNoInput": "Aggiungi almeno una foto o del testo.",
   "@aiImportNoInput": { "description": "Suggerimento quando non c'è ancora alcun input da inviare." },
-  "aiImportNotConfiguredBody": "Per digitalizzare una scheda serve una API key OpenRouter. Configurala nelle impostazioni: tutto il resto dell'app funziona senza AI.",
-  "@aiImportNotConfiguredBody": { "description": "Spiegazione mostrata quando le funzioni AI non sono configurate (RF-08: disabilitate, non nascoste)." },
+  "aiImportNotConfiguredBody": "Per digitalizzare una scheda serve una API key {provider}. Configurala nelle impostazioni: tutto il resto dell'app funziona senza AI.",
+  "@aiImportNotConfiguredBody": {
+    "description": "Spiegazione mostrata quando le funzioni AI non sono configurate (RF-08: disabilitate, non nascoste), con il nome del provider selezionato.",
+    "placeholders": { "provider": { "type": "String" } }
+  },
   "aiImportGoToSettings": "Vai alle impostazioni",
   "@aiImportGoToSettings": { "description": "Pulsante che porta alla configurazione AI." },
   "aiImportFallbackNotice": "L'AI non è riuscita a strutturare la scheda: il contenuto è stato conservato come testo libero da sistemare.",

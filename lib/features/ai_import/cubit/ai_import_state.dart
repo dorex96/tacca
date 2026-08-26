@@ -20,9 +20,12 @@ sealed class AiImportState with _$AiImportState {
     /// `true` quando la presenza della key è stata verificata.
     @Default(false) bool configChecked,
 
-    /// Key OpenRouter presente: senza, l'import è disabilitato con spiegazione
-    /// e rimando alle impostazioni (RF-08).
+    /// Key del provider selezionato presente: senza, l'import è disabilitato
+    /// con spiegazione e rimando alle impostazioni (RF-08).
     @Default(false) bool isConfigured,
+
+    /// Nome del provider selezionato, per dire *quale* key manca.
+    @Default('') String providerLabel,
 
     /// Immagini originali scelte (bytes a piena risoluzione).
     @Default(<Uint8List>[]) List<Uint8List> images,

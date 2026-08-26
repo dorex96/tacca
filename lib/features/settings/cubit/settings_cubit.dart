@@ -3,38 +3,49 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/errors/ai_exception.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../services/ai/ai_provider.dart';
+import '../../../services/ai/ai_selection.dart';
 import '../../../services/ai/model_catalog.dart';
 import 'settings_state.dart';
 
-/// Configurazione AI (RF-08): key OpenRouter, scelta del modello dal
-/// catalogo JSON, test connessione.
+/// Configurazione AI (RF-08): scelta del provider, sua API key, suo modello
+/// dal catalogo JSON, test connessione.
+///
+/// Key e modello sono per provider: passare da OpenRouter ad Anthropic (e
+/// tornare indietro) non cancella nulla, ricarica solo ciò che è salvato per
+/// il provider scelto.
 class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit({
     required SettingsRepository settings,
     required AiProvider provider,
-    required this.catalog,
+    required AiSelectionResolver selection,
   }) : _settings = settings,
        _provider = provider,
+       _selection = selection,
        super(const SettingsState()) {
     _load();
   }
 
   final SettingsRepository _settings;
   final AiProvider _provider;
+  final AiSelectionResolver _selection;
 
-  /// Catalogo dei modelli selezionabili (da `assets/ai/models.json`),
-  /// immutabile per la vita del cubit: la UI lo legge da qui.
-  final AiModelCatalog catalog;
+  /// Catalogo di provider e modelli (da `assets/ai/models.json`), immutabile
+  /// per la vita del cubit: la UI lo legge da qui.
+  AiModelCatalog get catalog => _selection.catalog;
+
+  /// Il provider mostrato in UI, con i suoi modelli.
+  AiProviderOption get selectedProvider =>
+      catalog.byId(state.selectedProviderId) ?? catalog.defaultProvider;
 
   Future<void> _load() async {
     try {
-      final apiKey = await _settings.getOpenRouterApiKey();
-      final modelId = await _settings.getOpenRouterModelId();
+      final selection = await _selection.resolve();
       emit(
         state.copyWith(
           isLoading: false,
-          hasApiKey: apiKey != null,
-          selectedModelId: _knownModelIdOrDefault(modelId),
+          selectedProviderId: selection.provider.id,
+          hasApiKey: selection.isConfigured,
+          selectedModelId: selection.model.id,
         ),
       );
     } catch (e) {
@@ -42,10 +53,27 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
+  /// Cambia provider e ricarica key e modello salvati per quello nuovo.
+  Future<void> selectProvider(AiProviderId providerId) async {
+    if (providerId == state.selectedProviderId) return;
+    await _settings.setAiProviderId(providerId.value);
+    final selection = await _selection.resolveFor(providerId);
+    emit(
+      state.copyWith(
+        selectedProviderId: providerId,
+        hasApiKey: selection.isConfigured,
+        selectedModelId: selection.model.id,
+        // L'esito del test riguardava l'altra key: qui non dice più nulla.
+        testStatus: AiConnectionTestStatus.idle,
+        testErrorMessage: null,
+      ),
+    );
+  }
+
   Future<void> saveApiKey(String key) async {
     final trimmed = key.trim();
     if (trimmed.isEmpty) return;
-    await _settings.setOpenRouterApiKey(trimmed);
+    await _settings.setApiKey(selectedProvider.id.value, trimmed);
     emit(
       state.copyWith(
         hasApiKey: true,
@@ -56,7 +84,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   Future<void> removeApiKey() async {
-    await _settings.setOpenRouterApiKey(null);
+    await _settings.setApiKey(selectedProvider.id.value, null);
     emit(
       state.copyWith(
         hasApiKey: false,
@@ -67,7 +95,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   Future<void> selectModel(String modelId) async {
-    await _settings.setOpenRouterModelId(modelId);
+    await _settings.setModelId(selectedProvider.id.value, modelId);
     emit(state.copyWith(selectedModelId: modelId));
   }
 
@@ -99,11 +127,4 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   void dismissError() => emit(state.copyWith(errorMessage: null));
-
-  /// Un id salvato che non esiste più nel catalogo (JSON modificato) torna
-  /// al default: la UI non deve mostrare una voce fantasma nel dropdown.
-  String _knownModelIdOrDefault(String? modelId) {
-    if (modelId != null && catalog.byId(modelId) != null) return modelId;
-    return catalog.defaultModelId;
-  }
 }

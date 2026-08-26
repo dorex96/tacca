@@ -1,22 +1,35 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Configurazione AI dell'utente (RF-08): API key OpenRouter e modello scelto.
+/// Configurazione AI dell'utente (RF-08): provider scelto e, per ciascun
+/// provider, API key e modello.
 ///
-/// La key vive esclusivamente nel secure storage nativo (Keychain / Android
-/// Keystore), mai in log né negli export (RNF-03). Anche il modello è salvato
-/// qui: è una singola stringa e non giustifica un secondo meccanismo di
-/// persistenza.
+/// Key e modello sono per provider, non globali: chi ha configurato
+/// OpenRouter e prova Anthropic non deve reinserire nulla tornando indietro.
+/// Il repository non conosce i provider — riceve il loro id come stringa e lo
+/// usa per comporre le chiavi di storage — così `data/` resta indipendente da
+/// `services/ai/`.
+///
+/// Le key vivono esclusivamente nel secure storage nativo (Keychain / Android
+/// Keystore), mai in log né negli export (RNF-03). Anche provider e modello
+/// sono salvati qui: sono singole stringhe e non giustificano un secondo
+/// meccanismo di persistenza.
 abstract interface class SettingsRepository {
-  Future<String?> getOpenRouterApiKey();
+  /// Id del provider AI scelto; `null` se l'utente non ha mai scelto (si usa
+  /// il default del catalogo).
+  Future<String?> getAiProviderId();
+
+  Future<void> setAiProviderId(String? providerId);
+
+  Future<String?> getApiKey(String providerId);
 
   /// `null` o stringa vuota cancellano la key salvata.
-  Future<void> setOpenRouterApiKey(String? key);
+  Future<void> setApiKey(String providerId, String? key);
 
-  /// Id del modello OpenRouter scelto; `null` se l'utente non ha mai scelto
-  /// (si usa il default del catalogo).
-  Future<String?> getOpenRouterModelId();
+  /// Id del modello scelto per [providerId]; `null` se l'utente non ha mai
+  /// scelto (si usa il default del provider nel catalogo).
+  Future<String?> getModelId(String providerId);
 
-  Future<void> setOpenRouterModelId(String? modelId);
+  Future<void> setModelId(String providerId, String? modelId);
 }
 
 class SecureSettingsRepository implements SettingsRepository {
@@ -25,21 +38,35 @@ class SecureSettingsRepository implements SettingsRepository {
 
   final FlutterSecureStorage _storage;
 
-  static const _apiKeyKey = 'ai.openrouter.apiKey';
-  static const _modelKey = 'ai.openrouter.model';
+  static const _providerKey = 'ai.provider';
+
+  /// Le chiavi per provider mantengono lo schema già in uso per OpenRouter
+  /// (`ai.openrouter.apiKey`, `ai.openrouter.model`): chi aveva configurato
+  /// l'app prima dell'arrivo di Anthropic ritrova la sua key al suo posto.
+  static String _apiKeyKey(String providerId) => 'ai.$providerId.apiKey';
+
+  static String _modelKey(String providerId) => 'ai.$providerId.model';
 
   @override
-  Future<String?> getOpenRouterApiKey() => _read(_apiKeyKey);
+  Future<String?> getAiProviderId() => _read(_providerKey);
 
   @override
-  Future<void> setOpenRouterApiKey(String? key) => _write(_apiKeyKey, key);
+  Future<void> setAiProviderId(String? providerId) =>
+      _write(_providerKey, providerId);
 
   @override
-  Future<String?> getOpenRouterModelId() => _read(_modelKey);
+  Future<String?> getApiKey(String providerId) => _read(_apiKeyKey(providerId));
 
   @override
-  Future<void> setOpenRouterModelId(String? modelId) =>
-      _write(_modelKey, modelId);
+  Future<void> setApiKey(String providerId, String? key) =>
+      _write(_apiKeyKey(providerId), key);
+
+  @override
+  Future<String?> getModelId(String providerId) => _read(_modelKey(providerId));
+
+  @override
+  Future<void> setModelId(String providerId, String? modelId) =>
+      _write(_modelKey(providerId), modelId);
 
   Future<String?> _read(String key) async {
     final value = await _storage.read(key: key);

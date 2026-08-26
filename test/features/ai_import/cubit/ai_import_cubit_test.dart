@@ -6,6 +6,7 @@ import 'package:tacca/features/ai_import/cubit/ai_import_cubit.dart';
 import 'package:tacca/features/ai_import/cubit/ai_import_state.dart';
 import 'package:tacca/services/ai/ai_provider.dart';
 import 'package:tacca/services/ai/dto/plan_dto.dart';
+import 'package:tacca/services/ai/ai_selection.dart';
 import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:tacca/services/images/image_input.dart';
 import 'package:tacca/services/images/ocr_service.dart';
@@ -82,10 +83,21 @@ class _FakeImageStore extends PlanImageStore {
 }
 
 const _catalog = AiModelCatalog(
-  defaultModelId: 'vision/model',
-  models: [
-    AiModelOption(id: 'vision/model', label: 'Vision', supportsVision: true),
-    AiModelOption(id: 'text/only', label: 'Solo testo'),
+  defaultProviderId: AiProviderId.openRouter,
+  providers: [
+    AiProviderOption(
+      id: AiProviderId.openRouter,
+      label: 'OpenRouter',
+      defaultModelId: 'vision/model',
+      models: [
+        AiModelOption(
+          id: 'vision/model',
+          label: 'Vision',
+          supportsVision: true,
+        ),
+        AiModelOption(id: 'text/only', label: 'Solo testo'),
+      ],
+    ),
   ],
 );
 
@@ -132,8 +144,7 @@ void main() {
     provider: provider,
     imageInput: imageInput,
     imageStore: imageStore,
-    settings: settings,
-    catalog: _catalog,
+    selection: AiSelectionResolver(settings: settings, catalog: _catalog),
     ocr: ocr,
   );
 

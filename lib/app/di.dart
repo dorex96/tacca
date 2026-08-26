@@ -9,8 +9,11 @@ import '../features/history/cubit/history_cubit.dart';
 import '../features/plans/cubit/plans_cubit.dart';
 import '../features/workout/cubit/resume_session_cubit.dart';
 import '../services/ai/ai_provider.dart';
+import '../services/ai/ai_selection.dart';
 import '../services/ai/model_catalog.dart';
+import '../services/ai/providers/anthropic_provider.dart';
 import '../services/ai/providers/open_router_provider.dart';
+import '../services/ai/providers/routing_ai_provider.dart';
 import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
@@ -76,11 +79,28 @@ class AppProviders extends StatelessWidget {
           create: (context) => SecureSettingsRepository(),
         ),
         RepositoryProvider<AiModelCatalog>.value(value: aiModelCatalog),
-        RepositoryProvider<AiProvider>(
-          create: (context) => OpenRouterProvider(
+        RepositoryProvider<AiSelectionResolver>(
+          create: (context) => AiSelectionResolver(
             settings: context.read<SettingsRepository>(),
             catalog: aiModelCatalog,
           ),
+        ),
+        // Un'implementazione per provider, dietro un unico [AiProvider] che
+        // smista in base alla scelta salvata: cubit e pagine non sanno con
+        // chi stanno parlando.
+        RepositoryProvider<AiProvider>(
+          create: (context) {
+            final selection = context.read<AiSelectionResolver>();
+            return RoutingAiProvider(
+              selection: selection,
+              providers: {
+                AiProviderId.openRouter: OpenRouterProvider(
+                  selection: selection,
+                ),
+                AiProviderId.anthropic: AnthropicProvider(selection: selection),
+              },
+            );
+          },
         ),
         RepositoryProvider<PlanImageStore>(
           create: (context) => PlanImageStore(),

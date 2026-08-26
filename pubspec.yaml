@@ -53,7 +53,7 @@ flutter:
   assets:
     # Segnali acustici dei timer della sessione (§7).
     - assets/audio/
-    # Catalogo dei modelli OpenRouter selezionabili (Impostazioni AI, RF-08).
+    # Catalogo dei provider e dei modelli selezionabili (Impostazioni AI, RF-08).
     - assets/ai/
   fonts:
     # Lato è il carattere dell'interfaccia (vedi lib/core/design/app_typography.dart).

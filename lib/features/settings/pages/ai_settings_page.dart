@@ -15,11 +15,15 @@ import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/square_icon_button.dart';
 import '../../../core/widgets/surface_card.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/ai/ai_provider.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/settings_state.dart';
 
-/// Configurazione AI (RF-08): provider (OpenRouter), API key, modello dal
-/// catalogo JSON, test connessione e avviso privacy.
+/// Configurazione AI (RF-08): provider, API key, modello — entrambi dal
+/// catalogo JSON — test connessione e avviso privacy.
+///
+/// Provider e modello sono due tendine sole: l'elenco viene da
+/// `assets/ai/models.json`, la pagina non sa quali provider esistano.
 class AiSettingsPage extends StatefulWidget {
   const AiSettingsPage({super.key});
 
@@ -53,9 +57,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
           }
           final cubit = context.read<SettingsCubit>();
           final catalog = cubit.catalog;
+          final provider = cubit.selectedProvider;
           final selectedModel = state.selectedModelId == null
               ? null
-              : catalog.byId(state.selectedModelId!);
+              : provider.byId(state.selectedModelId!);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -66,8 +71,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             ),
             children: [
               // Avviso esplicito richiesto da RF-08: i contenuti inviati
-              // all'AI lasciano il dispositivo.
-              InfoBanner(message: l10n.aiSettingsPrivacyNotice),
+              // all'AI lasciano il dispositivo, e verso chi.
+              InfoBanner(message: l10n.aiSettingsPrivacyNotice(provider.label)),
               if (!state.hasApiKey) ...[
                 const SizedBox(height: AppSpacing.sm),
                 InfoBanner(
@@ -78,26 +83,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
               ],
               Section(
                 label: l10n.aiSettingsProviderLabel,
-                child: SurfaceCard(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.card,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: const Row(
-                    children: [
-                      LinearIcon(
-                        AppIcons.cpu,
-                        size: 20,
-                        color: AppColors.muted,
-                      ),
-                      SizedBox(width: AppSpacing.md),
-                      Text('OpenRouter', style: AppTypography.row),
-                    ],
-                  ),
+                child: _Dropdown<AiProviderId>(
+                  value: provider.id,
+                  icon: AppIcons.cpu,
+                  items: {
+                    for (final option in catalog.providers)
+                      option.id: option.label,
+                  },
+                  onChanged: cubit.selectProvider,
                 ),
               ),
               Section(
-                label: l10n.aiSettingsKeyLabel,
+                label: l10n.aiSettingsKeyLabel(provider.label),
                 child: state.hasApiKey && !_editingKey
                     ? _SavedKeyTile(
                         onReplace: () => setState(() => _editingKey = true),
@@ -105,6 +102,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                       )
                     : _KeyEditor(
                         controller: _keyController,
+                        hintText: provider.keyHint ?? l10n.aiSettingsKeyHint,
                         onSave: () async {
                           await cubit.saveApiKey(_keyController.text);
                           _keyController.clear();
@@ -114,30 +112,12 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
               ),
               Section(
                 label: l10n.aiSettingsModelLabel,
-                child: DropdownButtonFormField<String>(
-                  initialValue: selectedModel?.id,
-                  isExpanded: true,
-                  style: AppTypography.row,
-                  borderRadius: BorderRadius.circular(AppSpacing.card),
-                  icon: const LinearIcon(
-                    AppIcons.chevronDown,
-                    size: 20,
-                    color: AppColors.muted,
-                  ),
-                  decoration: AppField.onBackground(),
-                  items: [
-                    for (final model in catalog.models)
-                      DropdownMenuItem(
-                        value: model.id,
-                        child: Text(
-                          model.label,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) cubit.selectModel(value);
+                child: _Dropdown<String>(
+                  value: selectedModel?.id,
+                  items: {
+                    for (final model in provider.models) model.id: model.label,
                   },
+                  onChanged: cubit.selectModel,
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -234,9 +214,18 @@ class _SavedKeyTile extends StatelessWidget {
 /// Inserimento della key: nascosta di default, con l'occhio per rileggerla
 /// prima di salvare (si incolla, e un carattere di troppo non si vede).
 class _KeyEditor extends StatefulWidget {
-  const _KeyEditor({required this.controller, required this.onSave});
+  const _KeyEditor({
+    required this.controller,
+    required this.hintText,
+    required this.onSave,
+  });
 
   final TextEditingController controller;
+
+  /// Placeholder che mostra la forma della key del provider scelto
+  /// (`sk-or-…`, `sk-ant-…`): viene dal catalogo, non dalle traduzioni.
+  final String hintText;
+
   final VoidCallback onSave;
 
   @override
@@ -260,7 +249,7 @@ class _KeyEditorState extends State<_KeyEditor> {
           enableSuggestions: false,
           style: AppTypography.row,
           decoration: AppField.onBackground(
-            hintText: l10n.aiSettingsKeyHint,
+            hintText: widget.hintText,
             prefixIcon: const LinearIcon(
               AppIcons.lock,
               size: 20,
@@ -269,7 +258,7 @@ class _KeyEditorState extends State<_KeyEditor> {
             suffixIcon: GhostIconButton(
               icon: AppIcons.eye,
               foreground: AppColors.muted,
-              tooltip: l10n.aiSettingsKeyLabel,
+              tooltip: l10n.aiSettingsKeyReveal,
               onPressed: () => setState(() => _obscured = !_obscured),
             ),
           ),
@@ -329,6 +318,59 @@ class _TestConnectionSection extends StatelessWidget {
           _ => const SizedBox.shrink(),
         },
       ],
+    );
+  }
+}
+
+/// L'unica forma di tendina della pagina: provider e modello si scelgono
+/// così. Gli stili vengono dal tema (design system), qui si passa solo il
+/// contenuto.
+class _Dropdown<T> extends StatelessWidget {
+  const _Dropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.icon,
+  });
+
+  final T? value;
+
+  /// Valore → etichetta mostrata, nell'ordine del catalogo.
+  final Map<T, String> items;
+
+  final ValueChanged<T> onChanged;
+
+  /// Icona a sinistra del campo (facoltativa).
+  final LinearIconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      isExpanded: true,
+      style: AppTypography.row,
+      borderRadius: BorderRadius.circular(AppSpacing.card),
+      icon: const LinearIcon(
+        AppIcons.chevronDown,
+        size: 20,
+        color: AppColors.muted,
+      ),
+      decoration: AppField.onBackground(
+        prefixIcon: switch (icon) {
+          final glyph? => LinearIcon(glyph, size: 20, color: AppColors.muted),
+          null => null,
+        },
+      ),
+      items: [
+        for (final entry in items.entries)
+          DropdownMenuItem(
+            value: entry.key,
+            child: Text(entry.value, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (selected) {
+        if (selected != null) onChanged(selected);
+      },
     );
   }
 }
