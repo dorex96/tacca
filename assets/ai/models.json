@@ -25,20 +25,6 @@
       "maxOutputTokens": 50000
     },
     {
-      "id": "google/gemma-4-31b-it:free",
-      "label": "Gemma 4 31b It (free)",
-      "supportsVision": false,
-      "supportsJsonSchema": true,
-      "maxOutputTokens": 50000
-    },
-    {
-      "id": "google/gemma-4-26b-a4b-it:free",
-      "label": "Gemma 4 26b A4B It (free)",
-      "supportsVision": false,
-      "supportsJsonSchema": true,
-      "maxOutputTokens": 50000
-    },
-    {
       "id": "dots-studio/dots-3-note-preview:free",
       "label": "Dots 3 Note Preview (free)",
       "supportsVision": false,
