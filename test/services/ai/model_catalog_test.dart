@@ -54,6 +54,33 @@ void main() {
       expect(anthropic.byId('claude-opus-5')!.effort, 'low');
     });
 
+    test('il provider google si legge come gli altri', () {
+      final catalog = AiModelCatalog.fromJsonString('''
+      {
+        "defaultProviderId": "google",
+        "providers": [
+          {
+            "id": "google",
+            "label": "Google Gemini",
+            "keyHint": "AIza…",
+            "defaultModelId": "gemini-3.7-flash",
+            "models": [
+              { "id": "gemini-3.7-flash", "label": "Flash", "supportsVision": true, "supportsJsonSchema": true, "effort": "low" }
+            ]
+          }
+        ]
+      }
+      ''');
+
+      expect(catalog.defaultProviderId, AiProviderId.google);
+      final google = catalog.byId(AiProviderId.google)!;
+      expect(google.keyHint, 'AIza…');
+      expect(google.defaultModel.label, 'Flash');
+      expect(google.defaultModel.supportsVision, isTrue);
+      expect(google.defaultModel.supportsJsonSchema, isTrue);
+      expect(google.defaultModel.effort, 'low');
+    });
+
     test('disableReasoning si legge dal JSON, default false', () {
       final provider = _singleProvider('''
         { "id": "a/one", "disableReasoning": true },

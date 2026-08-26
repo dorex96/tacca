@@ -1,6 +1,6 @@
 {
-  "_comment": "Catalogo dei provider AI e dei modelli selezionabili nelle Impostazioni AI. Modifica questo file per cambiare provider e modelli offerti all'utente: nessun intervento sul codice Dart. Ogni voce di 'providers' ha 'id' (SOLO 'openrouter' o 'anthropic': sono gli unici con un'implementazione, un id diverso viene ignorato), 'label' (nome mostrato in UI), 'keyHint' (facoltativo: il placeholder del campo API key), 'defaultModelId' e 'models'. 'defaultProviderId' indica il provider preselezionato per chi non ha ancora scelto.",
-  "_modelComment": "Per ogni modello: 'id' è l'identificatore del provider (OpenRouter: https://openrouter.ai/models — Anthropic: https://docs.claude.com/en/docs/about-claude/models), 'label' il nome mostrato in UI, 'supportsVision' indica se il modello accetta immagini (richiesto per l'import da foto; se false le foto passano prima per l'OCR on-device e solo il testo arriva al modello), 'supportsJsonSchema' se supporta lo structured output nativo (response_format json_schema su OpenRouter, output_config.format su Anthropic; altrimenti si usa il fallback prompt-based), 'maxOutputTokens' il budget di output della singola risposta (opzionale, default 8192): tenerlo alto evita schede troncate, ma un budget enorme allunga di molto una generazione che va in loop. 'disableReasoning' (opzionale, default false, solo OpenRouter) manda 'reasoning: {effort: none}': sui modelli reasoning il pensiero consuma lo stesso budget di maxOutputTokens e può troncare la scheda prima del JSON, ma qui non serve catena di ragionamento. 'effort' (opzionale, solo Anthropic: low|medium|high|xhigh|max) è l'equivalente sui modelli Claude — ometterlo lascia il default del modello; Claude Haiku 4.5 non lo accetta e va lasciato senza.",
+  "_comment": "Catalogo dei provider AI e dei modelli selezionabili nelle Impostazioni AI. Modifica questo file per cambiare provider e modelli offerti all'utente: nessun intervento sul codice Dart. Ogni voce di 'providers' ha 'id' (SOLO 'openrouter', 'anthropic' o 'google': sono gli unici con un'implementazione, un id diverso viene ignorato), 'label' (nome mostrato in UI), 'keyHint' (facoltativo: il placeholder del campo API key), 'defaultModelId' e 'models'. 'defaultProviderId' indica il provider preselezionato per chi non ha ancora scelto.",
+  "_modelComment": "Per ogni modello: 'id' è l'identificatore del provider (OpenRouter: https://openrouter.ai/models — Anthropic: https://docs.claude.com/en/docs/about-claude/models — Google: https://ai.google.dev/gemini-api/docs/models), 'label' il nome mostrato in UI, 'supportsVision' indica se il modello accetta immagini (richiesto per l'import da foto; se false le foto passano prima per l'OCR on-device e solo il testo arriva al modello), 'supportsJsonSchema' se supporta lo structured output nativo (response_format json_schema su OpenRouter, output_config.format su Anthropic, generationConfig.responseSchema su Google; altrimenti si usa il fallback prompt-based), 'maxOutputTokens' il budget di output della singola risposta (opzionale, default 8192): tenerlo alto evita schede troncate, ma un budget enorme allunga di molto una generazione che va in loop. 'disableReasoning' (opzionale, default false, solo OpenRouter) manda 'reasoning: {effort: none}': sui modelli reasoning il pensiero consuma lo stesso budget di maxOutputTokens e può troncare la scheda prima del JSON, ma qui non serve catena di ragionamento. 'effort' (opzionale) è l'equivalente dove il pensiero non si spegne ma si dosa: su Anthropic è output_config.effort (low|medium|high|xhigh|max — Claude Haiku 4.5 non lo accetta e va lasciato senza), su Google è generationConfig.thinkingConfig.thinkingLevel (low|medium|high: alcuni modelli accettano anche 'minimal', Gemini 3.7 Flash no). Ometterlo lascia il default del modello.",
   "defaultProviderId": "openrouter",
   "providers": [
     {
@@ -66,6 +66,40 @@
           "supportsVision": true,
           "supportsJsonSchema": true,
           "maxOutputTokens": 32000
+        }
+      ]
+    },
+    {
+      "id": "google",
+      "label": "Google Gemini",
+      "keyHint": "AIza…",
+      "defaultModelId": "gemini-3.7-flash",
+      "models": [
+        {
+          "id": "gemini-3.7-flash",
+          "label": "Gemini 3.7 Flash",
+          "supportsVision": true,
+          "supportsJsonSchema": true,
+          "maxOutputTokens": 50000,
+          "_effort": "Il pensiero su Gemini 3 non si spegne: 'low' è il minimo accettato da 3.7 Flash ('minimal' viene rifiutato) e lascia il budget di output alla scheda invece che al ragionamento.",
+          "effort": "low"
+        },
+        {
+          "id": "gemini-3.5-flash",
+          "label": "Gemini 3.5 Flash",
+          "supportsVision": true,
+          "supportsJsonSchema": true,
+          "maxOutputTokens": 50000,
+          "effort": "low"
+        },
+        {
+          "id": "gemini-3.1-pro",
+          "label": "Gemini 3.1 Pro",
+          "supportsVision": true,
+          "supportsJsonSchema": true,
+          "maxOutputTokens": 50000,
+          "_effort": "Sui modelli Pro il pensiero non si può spegnere: 'low' è il livello più basso, e anche così questo resta il più lento e il più caro dei tre.",
+          "effort": "low"
         }
       ]
     }

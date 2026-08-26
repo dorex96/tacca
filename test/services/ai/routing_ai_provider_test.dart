@@ -48,6 +48,12 @@ const _catalog = AiModelCatalog(
       defaultModelId: 'claude-opus-5',
       models: [AiModelOption(id: 'claude-opus-5', label: 'Opus')],
     ),
+    AiProviderOption(
+      id: AiProviderId.google,
+      label: 'Google Gemini',
+      defaultModelId: 'gemini-3.7-flash',
+      models: [AiModelOption(id: 'gemini-3.7-flash', label: 'Flash')],
+    ),
   ],
 );
 
@@ -55,17 +61,20 @@ void main() {
   late FakeSettingsRepository settings;
   late _SpyProvider openRouter;
   late _SpyProvider anthropic;
+  late _SpyProvider google;
   late RoutingAiProvider provider;
 
   setUp(() {
     settings = FakeSettingsRepository();
     openRouter = _SpyProvider('openrouter');
     anthropic = _SpyProvider('anthropic');
+    google = _SpyProvider('google');
     provider = RoutingAiProvider(
       selection: AiSelectionResolver(settings: settings, catalog: _catalog),
       providers: {
         AiProviderId.openRouter: openRouter,
         AiProviderId.anthropic: anthropic,
+        AiProviderId.google: google,
       },
     );
   });
@@ -78,6 +87,7 @@ void main() {
       expect(extraction.plan.name, 'openrouter');
       expect(openRouter.extractCalls, 1);
       expect(anthropic.extractCalls, 0);
+      expect(google.extractCalls, 0);
     },
   );
 
@@ -89,6 +99,17 @@ void main() {
     expect(extraction.plan.name, 'anthropic');
     expect(anthropic.extractCalls, 1);
     expect(openRouter.extractCalls, 0);
+  });
+
+  test('con Google selezionato la richiesta va a Google', () async {
+    settings.providerId = 'google';
+
+    final extraction = await provider.extractPlan(text: 'Panca');
+
+    expect(extraction.plan.name, 'google');
+    expect(google.extractCalls, 1);
+    expect(openRouter.extractCalls, 0);
+    expect(anthropic.extractCalls, 0);
   });
 
   test(

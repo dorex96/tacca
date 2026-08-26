@@ -42,7 +42,8 @@ class SecureSettingsRepository implements SettingsRepository {
 
   /// Le chiavi per provider mantengono lo schema già in uso per OpenRouter
   /// (`ai.openrouter.apiKey`, `ai.openrouter.model`): chi aveva configurato
-  /// l'app prima dell'arrivo di Anthropic ritrova la sua key al suo posto.
+  /// l'app prima dell'arrivo degli altri provider ritrova la sua key al suo
+  /// posto.
   static String _apiKeyKey(String providerId) => 'ai.$providerId.apiKey';
 
   static String _modelKey(String providerId) => 'ai.$providerId.model';

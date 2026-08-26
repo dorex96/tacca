@@ -12,6 +12,7 @@ import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_selection.dart';
 import '../services/ai/model_catalog.dart';
 import '../services/ai/providers/anthropic_provider.dart';
+import '../services/ai/providers/google_provider.dart';
 import '../services/ai/providers/open_router_provider.dart';
 import '../services/ai/providers/routing_ai_provider.dart';
 import '../services/feedback/session_feedback.dart';
@@ -98,6 +99,7 @@ class AppProviders extends StatelessWidget {
                   selection: selection,
                 ),
                 AiProviderId.anthropic: AnthropicProvider(selection: selection),
+                AiProviderId.google: GoogleProvider(selection: selection),
               },
             );
           },
