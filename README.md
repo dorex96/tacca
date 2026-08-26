@@ -28,7 +28,7 @@ Personal project, pre-1.0. What is actually built:
 | History | ✅ done |
 | AI import from photo / gallery / pasted text | ✅ done, **OpenRouter, Anthropic and Google Gemini** |
 | AI chat to create/edit a plan | 🚫 not planned — importing a plan and then editing it by hand covers the need |
-| Providers other than those three | ❌ not built — `AiProvider` is the seam where they plug in |
+| Providers | ✅ done |
 
 ## Features
 
