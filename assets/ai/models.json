@@ -76,8 +76,8 @@
       "defaultModelId": "gemini-3.7-flash",
       "models": [
         {
-          "id": "gemini-3.7-flash",
-          "label": "Gemini 3.7 Flash",
+          "id": "gemini-3.6-flash",
+          "label": "Gemini 3.6 Flash",
           "supportsVision": true,
           "supportsJsonSchema": true,
           "maxOutputTokens": 50000,
@@ -90,15 +90,6 @@
           "supportsVision": true,
           "supportsJsonSchema": true,
           "maxOutputTokens": 50000,
-          "effort": "low"
-        },
-        {
-          "id": "gemini-3.1-pro",
-          "label": "Gemini 3.1 Pro",
-          "supportsVision": true,
-          "supportsJsonSchema": true,
-          "maxOutputTokens": 50000,
-          "_effort": "Sui modelli Pro il pensiero non si può spegnere: 'low' è il livello più basso, e anche così questo resta il più lento e il più caro dei tre.",
           "effort": "low"
         }
       ]
