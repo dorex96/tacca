@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'support/first_run.dart';
+
 // Verifica dal vivo il flusso M1 (RF-01/RF-02) su un device reale, con
 // ObjectBox nativo vero (non mockato): crea una scheda, la salva, la apre in
 // consultazione, verifica il precompilamento in modifica, poi la elimina per
@@ -26,6 +28,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await acceptLegalNoticeIfShown(tester);
 
     final planName =
         'Test integrazione ${DateTime.now().millisecondsSinceEpoch}';

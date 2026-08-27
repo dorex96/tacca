@@ -35,14 +35,26 @@ class SettingsPage extends StatelessWidget {
             subtitle: l10n.settingsAiTileSubtitle,
             onTap: () => context.push('/settings/ai'),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          SettingsTile(
+            icon: AppIcons.shield,
+            title: l10n.settingsLegalTile,
+            subtitle: l10n.settingsLegalTileSubtitle,
+            onTap: () => context.push('/settings/legal'),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Riga delle impostazioni: quadratino lime con l'icona, titolo, spiegazione
-/// e la freccia che dice che porta da qualche parte.
+/// Riga delle impostazioni: quadratino con l'icona, titolo, spiegazione e la
+/// freccia che dice che porta da qualche parte.
+///
+/// Il quadratino è **neutro**, non lime: in questa schermata il lime ce l'ha
+/// già la tab attiva, e da quando le righe sono più di una un accento per
+/// riga si annullerebbe da solo (regola del design: un solo lime per
+/// schermata).
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     required this.icon,
@@ -73,7 +85,7 @@ class SettingsTile extends StatelessWidget {
             height: 44,
             width: 44,
             decoration: BoxDecoration(
-              color: AppColors.lime,
+              color: AppColors.fill,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Center(child: LinearIcon(icon, color: AppColors.ink)),

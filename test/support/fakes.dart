@@ -14,6 +14,7 @@ import 'package:tacca/services/feedback/session_feedback.dart';
 import 'package:tacca/services/images/image_input.dart';
 import 'package:tacca/services/images/ocr_service.dart';
 import 'package:tacca/services/images/plan_image_store.dart';
+import 'package:tacca/services/links/link_opener.dart';
 import 'package:tacca/services/notifications/session_notifier.dart';
 import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:tacca/services/wakelock/screen_wake.dart';
@@ -277,11 +278,15 @@ class FakeSettingsRepository implements SettingsRepository {
     String? apiKey,
     String? modelId,
     this.providerId,
+    this.acceptedLegalNoticeVersion,
     this.defaultProviderId = 'openrouter',
   }) {
     if (apiKey != null) apiKeys[defaultProviderId] = apiKey;
     if (modelId != null) modelIds[defaultProviderId] = modelId;
   }
+
+  /// Versione dell'informativa legale già accettata; null = primo avvio.
+  int? acceptedLegalNoticeVersion;
 
   /// Provider su cui puntano [apiKey] e [modelId].
   final String defaultProviderId;
@@ -318,6 +323,14 @@ class FakeSettingsRepository implements SettingsRepository {
   Future<void> setModelId(String providerId, String? modelId) async =>
       _put(modelIds, providerId, modelId);
 
+  @override
+  Future<int?> getAcceptedLegalNoticeVersion() async =>
+      acceptedLegalNoticeVersion;
+
+  @override
+  Future<void> setAcceptedLegalNoticeVersion(int version) async =>
+      acceptedLegalNoticeVersion = version;
+
   void _put(Map<String, String> into, String key, String? value) {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) {
@@ -325,5 +338,23 @@ class FakeSettingsRepository implements SettingsRepository {
     } else {
       into[key] = trimmed;
     }
+  }
+}
+
+/// [LinkOpener] che non apre niente: registra gli indirizzi richiesti e
+/// decide se l'apertura riesce, così si può provare anche il piano B (link
+/// copiato negli appunti).
+class FakeLinkOpener implements LinkOpener {
+  FakeLinkOpener({this.succeeds = true});
+
+  /// False = nessun browser disponibile.
+  final bool succeeds;
+
+  final List<Uri> opened = [];
+
+  @override
+  Future<bool> open(Uri url) async {
+    opened.add(url);
+    return succeeds;
   }
 }

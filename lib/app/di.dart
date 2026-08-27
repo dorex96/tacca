@@ -6,6 +6,7 @@ import '../data/repositories/plan_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/workout_log_repository.dart';
 import '../features/history/cubit/history_cubit.dart';
+import '../features/legal/cubit/legal_notice_cubit.dart';
 import '../features/plans/cubit/plans_cubit.dart';
 import '../features/workout/cubit/resume_session_cubit.dart';
 import '../services/ai/ai_provider.dart';
@@ -20,6 +21,7 @@ import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
 import '../services/images/plan_image_store.dart';
+import '../services/links/link_opener.dart';
 import '../services/notifications/session_notifier.dart';
 import '../services/timer/timer_engine.dart';
 import '../services/wakelock/screen_wake.dart';
@@ -40,6 +42,9 @@ import '../services/wakelock/screen_wake.dart';
 /// I servizi della sessione ([TimerEngine], feedback, notifiche, wake lock)
 /// sono singoli per tutta l'app: possiedono risorse di piattaforma (player
 /// audio, canale notifiche) e una sola sessione può essere attiva per volta.
+///
+/// [LegalNoticeCubit] vive qui perché il gate legale è sopra al router: la
+/// manleva del primo avvio deve poter decidere prima di ogni schermata.
 class AppProviders extends StatelessWidget {
   const AppProviders({
     required this.objectBox,
@@ -113,6 +118,9 @@ class AppProviders extends StatelessWidget {
         RepositoryProvider<ClipboardService>(
           create: (context) => const SystemClipboardService(),
         ),
+        RepositoryProvider<LinkOpener>(
+          create: (context) => const UrlLauncherLinkOpener(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -128,6 +136,12 @@ class AppProviders extends StatelessWidget {
             create: (context) => ResumeSessionCubit(
               repository: context.read<WorkoutLogRepository>(),
             ),
+          ),
+          // Il gate legale sta sopra al router (vedi App): il suo stato deve
+          // esistere prima che venga costruita qualsiasi schermata.
+          BlocProvider<LegalNoticeCubit>(
+            create: (context) =>
+                LegalNoticeCubit(settings: context.read<SettingsRepository>()),
           ),
         ],
         child: child,

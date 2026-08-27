@@ -32,6 +32,9 @@ dependencies:
   flutter_image_compress: ^2.5.1
   path_provider: ^2.1.5
   flutter_native_ocr: ^0.1.0
+  # Apre i termini e condizioni nel browser di sistema. L'app non
+  # incorpora nessuna WebView: vedi lib/services/links/link_opener.dart.
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

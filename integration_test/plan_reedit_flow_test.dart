@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'support/first_run.dart';
+
 // Riproduce dal vivo la segnalazione: creare una scheda, salvarla, RIAPRIRLA
 // in modifica, aggiungere un giorno, un blocco standard sul nuovo giorno e
 // due esercizi, salvare di nuovo: gli esercizi devono comparire nel
@@ -28,6 +30,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await acceptLegalNoticeIfShown(tester);
 
       final planName = 'Test reedit ${DateTime.now().millisecondsSinceEpoch}';
 
