@@ -25,17 +25,14 @@ Regole vincolanti:
 - Rispondi solo con il testo della scheda: nessun commento, nessun JSON.
 ''';
 
-/// Regole fisse dell'estrazione (§6.3): non inventare, non scartare,
-/// mantenere la lingua della scheda.
-const extractionSystemPrompt = '''
-Sei un assistente che digitalizza schede di allenamento in palestra.
-Ricevi il testo di una scheda — spesso la trascrizione di una foto — e
-restituisci la scheda in JSON conforme allo schema fornito.
-
-Regole vincolanti:
-- Rispondi SOLO con un oggetto JSON valido conforme allo schema, senza testo
-  prima o dopo. Se non puoi usare uno structured output, racchiudi il JSON in
-  un blocco ```json.
+/// Le regole di merito dell'estrazione (§6.3): non inventare, non scartare,
+/// mantenere la lingua della scheda, raggruppare in blocchi.
+///
+/// Stanno qui da sole perché non dipendono da *come* si parla al modello:
+/// valgono identiche per la chiamata via API ([extractionSystemPrompt]) e per
+/// il prompt che l'utente copia in una chat qualsiasi ([externalChatPrompt]).
+/// Quello che cambia fra i due è solo la forma della risposta attesa.
+const _extractionRules = '''
 - Non inventare esercizi, serie, carichi o valori assenti dall'originale:
   i campi non presenti restano null o vengono omessi.
 - Qualunque contenuto che non riesci a interpretare in modo strutturato va
@@ -103,6 +100,14 @@ blocco a parte e non merita un blocco tutto suo: è un normale esercizio con
 "durationSeconds" impostato e "reps"/"sets" assenti, dentro il blocco
 "standard" in cui compare (di solito quello di riscaldamento).
 
+Campi ammessi (non usarne altri, non rinominarli):
+- scheda: "name" (obbligatorio), "description", "notes", "days" (obbligatorio)
+- giorno: "label" (obbligatorio), "notes", "blocks"
+- blocco: "type" (obbligatorio), "notes", "exercises", più i parametri del suo
+  tipo elencati qui sopra
+- esercizio: "name" (obbligatorio), "sets" (numero intero), "reps" (stringa),
+  "load" (stringa), "restSeconds", "durationSeconds", "notes"
+
 Forma esatta del JSON (i nomi dei campi sono vincolanti, non usarne altri:
 niente "day" al posto di "label", niente campo "exercise" piatto sui blocchi —
 ogni esercizio è un oggetto dentro l'array "exercises" con proprietà "name").
@@ -144,6 +149,99 @@ Nota come i quattro esercizi consecutivi stiano in un blocco solo:
 }
 ```
 ''';
+
+/// System prompt della strutturazione via API (§6.3).
+///
+/// Le regole di merito sono quelle condivise; qui davanti c'è solo il patto
+/// sulla forma della risposta, scritto per un'API che espone lo structured
+/// output (e per il fallback prompt-based di chi lo rifiuta).
+const extractionSystemPrompt = '''
+Sei un assistente che digitalizza schede di allenamento in palestra.
+Ricevi il testo di una scheda — spesso la trascrizione di una foto — e
+restituisci la scheda in JSON conforme allo schema fornito.
+
+Regole vincolanti:
+- Rispondi SOLO con un oggetto JSON valido conforme allo schema, senza testo
+  prima o dopo. Se non puoi usare uno structured output, racchiudi il JSON in
+  un blocco ```json.
+$_extractionRules''';
+
+/// Il messaggio che l'utente copia negli appunti e incolla nella chat AI che
+/// preferisce (RF-03, modalità senza API key).
+///
+/// Deve bastare a sé stesso: nessuno schema allegato alla richiesta, nessun
+/// structured output, nessun secondo turno automatico. Perciò si porta dentro
+/// le stesse regole dell'estrazione via API, l'elenco dei campi ammessi e —
+/// in fondo — il testo della scheda, delimitato da righe riconoscibili
+/// perché il modello non lo confonda con le istruzioni.
+///
+/// Le tre regole in cima sono quelle che rendono la risposta *incollabile*:
+/// un solo blocco recintato (il [PlanParser] lo preferisce a tutto il resto),
+/// niente virgole pendenti o commenti (le due malformazioni che una chat
+/// produce davvero) e il divieto di fermarsi a metà, che è il modo in cui le
+/// schede lunghe arrivano tronche.
+String externalChatPrompt({required String text, String? userHint}) {
+  final buffer = StringBuffer()
+    ..writeln(
+      'Sei un assistente che digitalizza schede di allenamento in '
+      'palestra.',
+    )
+    ..writeln(
+      'In fondo a questo messaggio, dopo la riga "=== SCHEDA ===", '
+      'trovi il testo di',
+    )
+    ..writeln('una scheda di allenamento: convertilo in JSON.')
+    ..writeln()
+    ..writeln(
+      'Come devi rispondere (la risposta la legge un\'applicazione, '
+      'non una persona):',
+    )
+    ..writeln(
+      '- Rispondi con UN SOLO blocco ```json e nient\'altro: niente '
+      'saluti, niente',
+    )
+    ..writeln('  spiegazioni prima o dopo, nessuna domanda.')
+    ..writeln(
+      '- Dentro il blocco un unico oggetto JSON valido: virgolette '
+      'dritte ("),',
+    )
+    ..writeln(
+      '  nessun commento, nessuna virgola dopo l\'ultimo elemento di '
+      'un oggetto o',
+    )
+    ..writeln('  di un array.')
+    ..writeln(
+      '- Non interrompere la risposta a metà: se la scheda è lunga, '
+      'riportala',
+    )
+    ..writeln('  tutta lo stesso.')
+    ..writeln()
+    ..writeln('Regole vincolanti:')
+    ..writeln(_extractionRules)
+    ..writeln('=== SCHEDA ===')
+    ..writeln(text.trim())
+    ..writeln('=== FINE SCHEDA ===');
+  if (userHint != null && userHint.trim().isNotEmpty) {
+    buffer
+      ..writeln()
+      ..writeln('Indicazioni di chi ti scrive:')
+      ..writeln(userHint.trim());
+  }
+  return buffer.toString().trim();
+}
+
+/// Il messaggio correttivo da rimandare nella stessa chat quando la risposta
+/// incollata non è utilizzabile: è il [retryUserText] del retry automatico,
+/// detto a una chat invece che a un'API.
+///
+/// Senza key non c'è nessun retry che possiamo fare noi, ma l'errore di
+/// parsing resta l'informazione che fa correggere il modello: gliela facciamo
+/// arrivare per le mani dell'utente.
+String externalChatCorrection(String parseError) {
+  return 'La risposta precedente non è utilizzabile. Errore: $parseError\n'
+      'Rispondi di nuovo con il solo blocco ```json corretto e completo, '
+      'senza testo prima o dopo.';
+}
 
 /// Schema della scheda (§5.3), usato come structured output dai modelli che
 /// lo supportano (`response_format: json_schema` su OpenRouter,

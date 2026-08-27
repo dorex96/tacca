@@ -1,11 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/design/app_colors.dart';
-import '../../../core/design/app_radius.dart';
 import '../../../core/design/app_spacing.dart';
 import '../../../core/design/app_typography.dart';
 import '../../../core/design/linear_icons.dart';
@@ -13,12 +10,12 @@ import '../../../core/widgets/app_field.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/info_banner.dart';
-import '../../../core/widgets/linear_icon.dart';
 import '../../../core/widgets/pill_button.dart';
 import '../../../core/widgets/square_icon_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/ai_import_cubit.dart';
 import '../cubit/ai_import_state.dart';
+import '../widgets/plan_image_thumbnail.dart';
 import 'ai_import_review_args.dart';
 
 /// Import di una scheda via AI (RF-03): foto, immagini dalla galleria e/o
@@ -82,6 +79,10 @@ class AiImportPage extends StatelessWidget {
 
 /// Le funzioni AI non si nascondono: si spiegano e si rimanda alle
 /// impostazioni (RF-08).
+///
+/// Chi arriva qui senza key non deve però trovare un vicolo cieco: procurarsi
+/// una key è un viaggio, mentre l'import via chat esterna funziona adesso.
+/// Per questo è lui la pillola scura, e le impostazioni restano l'alternativa.
 class _NotConfiguredView extends StatelessWidget {
   const _NotConfiguredView({required this.providerLabel});
 
@@ -94,15 +95,28 @@ class _NotConfiguredView extends StatelessWidget {
     return EmptyState(
       icon: AppIcons.lock,
       message: l10n.aiImportNotConfiguredBody(providerLabel),
-      action: PillButton(
-        label: l10n.aiImportGoToSettings,
-        icon: AppIcons.settings,
-        expand: false,
-        onPressed: () async {
-          final cubit = context.read<AiImportCubit>();
-          await context.push('/settings/ai');
-          await cubit.refreshConfiguration();
-        },
+      action: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PillButton(
+            label: l10n.aiImportUseExternalChat,
+            icon: AppIcons.cpu,
+            expand: false,
+            onPressed: () => context.pushReplacement('/plans/new/import/paste'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PillButton(
+            label: l10n.aiImportGoToSettings,
+            icon: AppIcons.settings,
+            tone: PillTone.outline,
+            expand: false,
+            onPressed: () async {
+              final cubit = context.read<AiImportCubit>();
+              await context.push('/settings/ai');
+              await cubit.refreshConfiguration();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -168,7 +182,7 @@ class _InputView extends StatelessWidget {
             runSpacing: AppSpacing.sm,
             children: [
               for (var i = 0; i < state.images.length; i++)
-                _ImageThumbnail(
+                PlanImageThumbnail(
                   key: ValueKey('import-image-$i'),
                   bytes: state.images[i],
                   onRemove: () => cubit.removeImage(i),
@@ -226,61 +240,6 @@ class _InputView extends StatelessWidget {
           const SizedBox(height: AppSpacing.card),
           Center(child: Text(l10n.aiImportNoInput, style: AppTypography.meta)),
         ],
-      ],
-    );
-  }
-}
-
-class _ImageThumbnail extends StatelessWidget {
-  const _ImageThumbnail({
-    required this.bytes,
-    required this.onRemove,
-    super.key,
-  });
-
-  final Uint8List bytes;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Image.memory(
-            bytes,
-            width: 104,
-            height: 104,
-            fit: BoxFit.cover,
-          ),
-        ),
-        Positioned(
-          top: 0,
-          right: 0,
-          child: Material(
-            color: AppColors.surface.withValues(alpha: 0.9),
-            shape: const CircleBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onRemove,
-              child: Tooltip(
-                message: l10n.aiImportRemoveImage,
-                child: const SizedBox.square(
-                  dimension: 32,
-                  child: Center(
-                    child: LinearIcon(
-                      AppIcons.close,
-                      size: 16,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }

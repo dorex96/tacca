@@ -1,5 +1,6 @@
 import 'package:tacca/data/entities/block.dart';
 import 'package:tacca/services/ai/plan_parser.dart';
+import 'package:tacca/services/ai/prompts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Fixture conforme allo schema §5.3 dell'analisi funzionale, con tutti i
@@ -181,6 +182,100 @@ void main() {
         () => parser.parse('{"name":"S","days":[]}'),
         throwsA(isA<PlanParseException>()),
       );
+    });
+  });
+
+  // Il flusso "copia e incolla" (RF-03) porta dentro risposte che nessuna API
+  // produrrebbe: conversazioni intere, JSON abbelliti, testo tagliato a metà.
+  group('PlanParser.parse — risposte incollate a mano', () {
+    test('con la conversazione intera vince la risposta, non l\'esempio del '
+        'prompt', () {
+      final raw =
+          '${externalChatPrompt(text: 'Panca 10x4')}\n\n'
+          'Certo! Ecco la tua scheda:\n```json\n$_validJson\n```';
+
+      // L'esempio dentro il prompt è una scheda valida a tutti gli effetti:
+      // se vincesse lui, l'utente si ritroverebbe in revisione "Nome scheda".
+      expect(parser.parse(raw).name, 'Upper/Lower — Fase 2');
+    });
+
+    test('tollera le virgole dopo l\'ultimo elemento', () {
+      final dto = parser.parse('''
+      {
+        "name": "Virgole",
+        "days": [
+          {
+            "label": "Unico",
+            "blocks": [
+              { "type": "standard", "exercises": [ { "name": "Panca", }, ], },
+            ],
+          },
+        ],
+      }
+      ''');
+      expect(dto.days.single.blocks.single.exercises.single.name, 'Panca');
+    });
+
+    test('tollera i commenti che qualche modello aggiunge', () {
+      final dto = parser.parse('''
+      {
+        "name": "Commenti", // il nome della scheda
+        /* i giorni */
+        "days": [
+          {
+            "label": "Unico",
+            "blocks": [{ "type": "standard", "exercises": [{"name": "Squat"}] }]
+          }
+        ]
+      }
+      ''');
+      expect(dto.name, 'Commenti');
+    });
+
+    test(
+      'raddrizza le virgolette tipografiche quando sono tutte trasformate',
+      () {
+        final dto = parser.parse(
+          '{“name”: “Virgolette”, “days”: [{“label”: “Unico”, '
+          '“blocks”: [{“type”: “standard”, “exercises”: '
+          '[{“name”: “Stacco”}]}]}]}',
+        );
+        expect(dto.name, 'Virgolette');
+      },
+    );
+
+    test('una nota con le virgolette tipografiche resta intatta', () {
+      final dto = parser.parse(
+        '{"name": "Note", "days": [{"label": "Unico", "blocks": '
+        '[{"type": "standard", "exercises": '
+        '[{"name": "Panca", "notes": "presa “stretta”"}]}]}]}',
+      );
+      expect(
+        dto.days.single.blocks.single.exercises.single.notes,
+        'presa “stretta”',
+      );
+    });
+
+    test('dice che la risposta è stata copiata a metà', () {
+      expect(
+        () => parser.parse(
+          'Ecco la scheda:\n```json\n{"name": "Tagliata", "days": [{"label"',
+        ),
+        throwsA(
+          isA<PlanParseException>().having(
+            (e) => e.message,
+            'message',
+            contains('in parte'),
+          ),
+        ),
+      );
+    });
+
+    test('scarta gli oggetti JSON che non sono la scheda', () {
+      final raw =
+          '$_validJson\n\nSe vuoi te la do anche in un altro formato, '
+          'tipo {"formato": "csv"}.';
+      expect(parser.parse(raw).name, 'Upper/Lower — Fase 2');
     });
   });
 

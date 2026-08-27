@@ -27,6 +27,7 @@ Personal project, pre-1.0. What is actually built:
 | Workout session, timers, crash recovery | ✅ done |
 | History | ✅ done |
 | AI import from photo / gallery / pasted text | ✅ done, **OpenRouter, Anthropic and Google Gemini** |
+| AI import through your own chat, no key needed | ✅ done — copy the prompt, paste the answer back |
 | AI chat to create/edit a plan | 🚫 not planned — importing a plan and then editing it by hand covers the need |
 | Providers | ✅ done |
 
@@ -41,6 +42,8 @@ Personal project, pre-1.0. What is actually built:
 **History.** Snapshot-based: each log stores the plan and exercise *names* it was recorded with, so past sessions stay readable after you edit or delete the plan. Filter by plan, drill into a session, see every set.
 
 **AI import (optional, bring your own key).** Photograph a paper plan, pick images from the gallery, or paste text; the model returns a structured plan that lands in the manual editor for review — nothing is saved until you press save. If the selected model has no vision support, the photos go through the phone's on-device OCR first and only the text is sent. If the model fails to produce valid JSON twice in a row, the raw answer is kept as a free-text block: your input is never discarded.
+
+**AI import through your own chat (no key at all).** The same import with the model outside the app, in two guided steps. Step one takes your plan — typed, pasted, or photographed and read by the phone's on-device OCR into an editable field — and copies a self-contained prompt to the clipboard. You paste it into whichever AI chat you already use, then step two takes the answer back. The pasted text goes through the very same pipeline as the API route, and it does not have to be clean JSON: the parser digs the plan out of greetings, code fences, whole pasted conversations, trailing commas and stray comments. If it still cannot read it, you get the parser's own error formulated as a correction to paste back into the chat — the manual twin of the automatic retry — and, as a last resort, the answer is kept as a free-text block. No API key, no account, no network call: the app never talks to anyone here.
 
 ## Getting started
 
@@ -57,6 +60,8 @@ flutter run
 ### AI setup (optional)
 
 The app ships no API key and calls no service on its own. To enable the import: **Impostazioni → Intelligenza artificiale**, choose a provider — [OpenRouter](https://openrouter.ai), [Anthropic](https://console.anthropic.com) or [Google Gemini](https://aistudio.google.com/apikey) — paste its key, pick a model, and use *Prova connessione* to verify it. Key and model are stored **per provider**, so switching back and forth costs nothing: the key is kept in the platform secure storage (iOS Keychain / Android Keystore) — never logged, never exported, never written to the database. Requests are billed to *your* account with the provider you picked.
+
+A key is only needed for the automatic route. **Schede → Nuova scheda → Con la tua chat AI** does the same import with no key and no setup at all, by handing the prompt to whatever AI chat you already have open.
 
 Providers and models are **configuration, not code**: edit [`assets/ai/models.json`](assets/ai/models.json), which is read once at startup.
 
@@ -102,7 +107,7 @@ lib/
   core/       design tokens (colour, type, radius, spacing, icons), shared widgets
   data/       ObjectBox store, entities, repositories
   features/   plans · ai_import · workout · history · settings
-  services/   ai · timer · notifications · images (OCR) · feedback · wakelock
+  services/   ai · timer · notifications · images (OCR) · clipboard · feedback · wakelock
 ```
 
 Decisions worth knowing before you read the code:
@@ -111,7 +116,7 @@ Decisions worth knowing before you read the code:
 - **Cubit for CRUD, list and form state; Bloc only where the flow is genuinely event-driven.** The single Bloc is `WorkoutSessionBloc`, whose inputs arrive from the user, the timer and the app lifecycle, and where ordering matters.
 - **ObjectBox does not cascade updates**, so repositories walk the object tree, `put` every child explicitly, and delete the ids that disappeared. That is what makes the editor and the session autosave actually persist.
 - **`ToMany` does not preserve order**, so every child carries an `int sortOrder` and repositories return already-sorted lists. Enums are persisted as strings.
-- **One AI pipeline, in `plan_parser.dart`**: extract JSON → decode → validate → normalize → one automatic retry with the validation error fed back to the model → free-text fallback. Normalization exists because models emit one block per exercise while a block is a *grouping*.
+- **One AI pipeline, in `plan_parser.dart`**: extract JSON → decode → validate → normalize → one automatic retry with the validation error fed back to the model → free-text fallback. Both import routes end here, the keyless one included — what changes is only who performs the corrective retry. Normalization exists because models emit one block per exercise while a block is a *grouping*.
 - **Appearance lives in two places only** — `lib/app/theme.dart` (every component theme) and `lib/core/design/` (colour, spacing, radius, typography and icon tokens). Pages pass no hand-written colours, radii or paddings; user-facing strings go through the ARB file, never inline.
 - **One visual language, one theme.** The look comes from a design file, not from a Material seed colour: near-white background, white cards at radius 26, ink `#192126`, a single lime accent `#BBF246` reserved for the one live thing on screen (the plan in use, the current exercise, the active tab). Lato for the interface, the platform font for prose. There is deliberately no dark theme — it was never designed — so `themeMode` is pinned to light.
 - **Icons are drawn, not fonted.** `lib/core/design/linear_icons.dart` holds the real glyphs of the design's icon set as SVG path data, painted by `LinearIcon`. Material icons are not used in the UI: their optical grid is visibly foreign next to these shapes.

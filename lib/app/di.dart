@@ -15,6 +15,7 @@ import '../services/ai/providers/anthropic_provider.dart';
 import '../services/ai/providers/google_provider.dart';
 import '../services/ai/providers/open_router_provider.dart';
 import '../services/ai/providers/routing_ai_provider.dart';
+import '../services/clipboard/clipboard_service.dart';
 import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
@@ -109,6 +110,9 @@ class AppProviders extends StatelessWidget {
         ),
         RepositoryProvider<ImageInput>(create: (context) => PickerImageInput()),
         RepositoryProvider<OcrService>(create: (context) => NativeOcrService()),
+        RepositoryProvider<ClipboardService>(
+          create: (context) => const SystemClipboardService(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [

@@ -57,8 +57,12 @@ class PlansPage extends StatelessWidget {
     );
   }
 
-  /// Nuova scheda: editor manuale (RF-02) o import via AI da foto, immagini
-  /// o testo (RF-03). L'opzione AI è l'unica lime del pannello.
+  /// Nuova scheda: editor manuale (RF-02), import via AI con la propria key,
+  /// oppure lo stesso import fatto passare da una chat AI qualsiasi (RF-03).
+  ///
+  /// La lime è su quest'ultima: è l'unica delle tre strade con l'AI che
+  /// funziona su un'app appena installata, senza key e senza account presso
+  /// nessuno. Le altre due restano neutre — nel pannello la lime è una sola.
   Future<void> _pickCreationMode(
     BuildContext context,
     AppLocalizations l10n,
@@ -78,8 +82,15 @@ class PlansPage extends StatelessWidget {
             icon: AppIcons.gallery,
             title: l10n.plansNewPlanAi,
             subtitle: l10n.plansNewPlanAiSubtitle,
-            highlighted: true,
             onTap: () => Navigator.of(context).pop('/plans/new/import'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SheetOption(
+            icon: AppIcons.cpu,
+            title: l10n.plansNewPlanChat,
+            subtitle: l10n.plansNewPlanChatSubtitle,
+            highlighted: true,
+            onTap: () => Navigator.of(context).pop('/plans/new/import/paste'),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:tacca/data/entities/log_entry.dart';
 import 'package:tacca/data/entities/log_set.dart';
@@ -8,7 +9,11 @@ import 'package:tacca/data/entities/workout_plan.dart';
 import 'package:tacca/data/repositories/plan_repository.dart';
 import 'package:tacca/data/repositories/settings_repository.dart';
 import 'package:tacca/data/repositories/workout_log_repository.dart';
+import 'package:tacca/services/clipboard/clipboard_service.dart';
 import 'package:tacca/services/feedback/session_feedback.dart';
+import 'package:tacca/services/images/image_input.dart';
+import 'package:tacca/services/images/ocr_service.dart';
+import 'package:tacca/services/images/plan_image_store.dart';
 import 'package:tacca/services/notifications/session_notifier.dart';
 import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:tacca/services/wakelock/screen_wake.dart';
@@ -191,6 +196,68 @@ class RecordingScreenWake implements ScreenWake {
 
   @override
   Future<void> disable() async => enabled = false;
+}
+
+/// OCR pilotato: a ogni immagine il testo che deve riconoscere, e la
+/// possibilità di farla fallire.
+class FakeOcrService implements OcrService {
+  final texts = <Uint8List, String>{};
+  final failing = <Uint8List>{};
+  final calls = <Uint8List>[];
+
+  @override
+  Future<String> recognizeText(Uint8List bytes) async {
+    calls.add(bytes);
+    if (failing.contains(bytes)) throw Exception('OCR fallito');
+    return texts[bytes] ?? '';
+  }
+}
+
+/// Fotocamera e galleria senza plugin: restituiscono ciò che il test ha
+/// preparato.
+class FakeImageInput implements ImageInput {
+  Uint8List? cameraResult;
+  List<Uint8List> galleryResult = const [];
+
+  @override
+  Future<Uint8List?> takePhoto() async => cameraResult;
+
+  @override
+  Future<List<Uint8List>> pickFromGallery() async => galleryResult;
+}
+
+/// Niente disco nei test: la "compressione" è un marker in coda ai byte e il
+/// salvataggio registra i path senza scrivere niente.
+class FakeImageStore extends PlanImageStore {
+  final saved = <Uint8List>[];
+
+  @override
+  Future<Uint8List> compressForUpload(Uint8List bytes) async =>
+      Uint8List.fromList([...bytes, 99]);
+
+  @override
+  Future<String> saveOriginal(Uint8List bytes) async {
+    saved.add(bytes);
+    return 'plan_images/img_${saved.length}.jpg';
+  }
+}
+
+/// Appunti in memoria: registra tutto ciò che ci viene scritto, così i test
+/// possono guardare *cosa* è stato copiato e non solo che si è copiato.
+class RecordingClipboardService implements ClipboardService {
+  final written = <String>[];
+  String? content;
+
+  String? get last => written.isEmpty ? null : written.last;
+
+  @override
+  Future<void> write(String text) async {
+    written.add(text);
+    content = text;
+  }
+
+  @override
+  Future<String?> read() async => content;
 }
 
 /// Serie di comodo per costruire uno storico nei test.

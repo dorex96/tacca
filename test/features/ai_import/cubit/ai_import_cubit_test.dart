@@ -8,9 +8,6 @@ import 'package:tacca/services/ai/ai_provider.dart';
 import 'package:tacca/services/ai/dto/plan_dto.dart';
 import 'package:tacca/services/ai/ai_selection.dart';
 import 'package:tacca/services/ai/model_catalog.dart';
-import 'package:tacca/services/images/image_input.dart';
-import 'package:tacca/services/images/ocr_service.dart';
-import 'package:tacca/services/images/plan_image_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/fakes.dart';
@@ -40,46 +37,6 @@ class _FakeAiProvider implements AiProvider {
 
   @override
   Future<void> testConnection() async {}
-}
-
-class _FakeOcrService implements OcrService {
-  final texts = <Uint8List, String>{};
-  final failing = <Uint8List>{};
-  final calls = <Uint8List>[];
-
-  @override
-  Future<String> recognizeText(Uint8List bytes) async {
-    calls.add(bytes);
-    if (failing.contains(bytes)) throw Exception('OCR fallito');
-    return texts[bytes] ?? '';
-  }
-}
-
-class _FakeImageInput implements ImageInput {
-  Uint8List? cameraResult;
-  List<Uint8List> galleryResult = const [];
-
-  @override
-  Future<Uint8List?> takePhoto() async => cameraResult;
-
-  @override
-  Future<List<Uint8List>> pickFromGallery() async => galleryResult;
-}
-
-/// Niente plugin nei test: la "compressione" è un marker e il salvataggio
-/// registra i path senza toccare il disco.
-class _FakeImageStore extends PlanImageStore {
-  final saved = <Uint8List>[];
-
-  @override
-  Future<Uint8List> compressForUpload(Uint8List bytes) async =>
-      Uint8List.fromList([...bytes, 99]);
-
-  @override
-  Future<String> saveOriginal(Uint8List bytes) async {
-    saved.add(bytes);
-    return 'plan_images/img_${saved.length}.jpg';
-  }
 }
 
 const _catalog = AiModelCatalog(
@@ -127,16 +84,16 @@ PlanExtraction _extraction({
 
 void main() {
   late _FakeAiProvider provider;
-  late _FakeImageInput imageInput;
-  late _FakeImageStore imageStore;
-  late _FakeOcrService ocr;
+  late FakeImageInput imageInput;
+  late FakeImageStore imageStore;
+  late FakeOcrService ocr;
   late FakeSettingsRepository settings;
 
   setUp(() {
     provider = _FakeAiProvider();
-    imageInput = _FakeImageInput();
-    imageStore = _FakeImageStore();
-    ocr = _FakeOcrService();
+    imageInput = FakeImageInput();
+    imageStore = FakeImageStore();
+    ocr = FakeOcrService();
     settings = FakeSettingsRepository(apiKey: 'sk-or-test');
   });
 

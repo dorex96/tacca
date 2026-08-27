@@ -84,6 +84,11 @@ void main() {
               builder: (context, state) =>
                   const Scaffold(body: Text('IMPORT AI')),
             ),
+            GoRoute(
+              path: '/plans/new/import/paste',
+              builder: (context, state) =>
+                  const Scaffold(body: Text('IMPORT CHAT')),
+            ),
           ],
         ),
       ),
@@ -130,7 +135,7 @@ void main() {
     expect(find.text('Altra scheda'), findsOneWidget);
   });
 
-  testWidgets('il FAB offre editor manuale e import AI (RF-02/RF-03)', (
+  testWidgets('il FAB offre editor manuale e le due strade AI (RF-02/RF-03)', (
     tester,
   ) async {
     await pumpPlansPage(tester, active: [_plan(1, 'Push Pull Legs')]);
@@ -140,11 +145,23 @@ void main() {
 
     expect(find.text('Editor manuale'), findsOneWidget);
     expect(find.text('Con AI'), findsOneWidget);
+    expect(find.text('Con la tua chat AI'), findsOneWidget);
 
     await tester.tap(find.text('Editor manuale'));
     await tester.pumpAndSettle();
 
     expect(find.text('NUOVA SCHEDA'), findsOneWidget);
+  });
+
+  testWidgets('dal FAB si raggiunge la chat AI esterna', (tester) async {
+    await pumpPlansPage(tester, active: [_plan(1, 'Push Pull Legs')]);
+
+    await tester.tap(find.text('Nuova scheda'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Con la tua chat AI'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('IMPORT CHAT'), findsOneWidget);
   });
 
   testWidgets('dal FAB si raggiunge l\'import AI', (tester) async {

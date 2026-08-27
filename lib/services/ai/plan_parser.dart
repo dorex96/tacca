@@ -22,44 +22,36 @@ class PlanParser {
 
   /// Estrae, decodifica, valida e normalizza. Lancia [PlanParseException] con
   /// la lista dei problemi trovati.
+  ///
+  /// La risposta può contenere più di un candidato — una chat premette un
+  /// saluto, mostra un esempio, ripete la richiesta prima del blocco buono —
+  /// quindi si provano tutti in ordine di attendibilità e vince il primo che
+  /// si decodifica *e* passa la validazione.
   PlanDto parse(String raw) {
-    final jsonText = _extractJsonPayload(raw);
-    if (jsonText == null) {
-      throw const PlanParseException(
-        'Nessun oggetto JSON trovato nella risposta.',
-      );
+    final candidates = _jsonCandidates(raw);
+    if (candidates.isEmpty) throw _noJsonFound(raw);
+
+    PlanParseException? decodeError;
+    PlanParseException? schemaError;
+    for (final candidate in candidates) {
+      final Map<String, dynamic> decoded;
+      try {
+        decoded = _decodeObject(candidate);
+      } on PlanParseException catch (e) {
+        decodeError ??= e;
+        continue;
+      }
+      try {
+        return _toPlanDto(decoded);
+      } on PlanParseException catch (e) {
+        schemaError ??= e;
+      }
     }
 
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(jsonText);
-    } on FormatException catch (e) {
-      throw PlanParseException('JSON malformato: ${e.message}', cause: e);
-    }
-    if (decoded is! Map<String, dynamic>) {
-      throw const PlanParseException(
-        'La risposta JSON non è un oggetto scheda.',
-      );
-    }
-
-    final PlanDto dto;
-    try {
-      dto = PlanDto.fromJson(decoded);
-    } catch (e) {
-      throw PlanParseException(
-        'JSON non conforme allo schema della scheda: $e',
-        cause: e,
-      );
-    }
-
-    // Validazione sulla risposta così com'è: i riferimenti nei messaggi
-    // d'errore ("giorno 2, blocco 3") devono corrispondere a ciò che il
-    // modello ha scritto, perché è a lui che tornano nel retry.
-    final issues = validate(dto);
-    if (issues.isNotEmpty) {
-      throw PlanParseException('Scheda non valida: ${issues.join('; ')}.');
-    }
-    return normalizePlanDto(dto);
+    // Fra i due errori vince quello semantico: dice *cosa* sistemare, mentre
+    // "JSON malformato" dice solo che non si legge. È il messaggio che torna
+    // al modello, nel retry automatico o per le mani dell'utente.
+    throw schemaError ?? decodeError!;
   }
 
   /// Validazione semantica (§6.2 punto 3): tipi di blocco noti, parametri
@@ -218,22 +210,94 @@ class PlanParser {
     return plan;
   }
 
-  /// Isola l'oggetto JSON dalla risposta: blocco ```json recintato, oppure
-  /// il primo oggetto `{...}` bilanciato nel testo (fallback prompt-based).
-  String? _extractJsonPayload(String raw) {
-    final fence = RegExp(
-      r'```(?:json)?\s*(\{[\s\S]*?\})\s*```',
-      multiLine: true,
-    ).firstMatch(raw);
-    if (fence != null) return fence.group(1);
+  /// Decodifica in [PlanDto], valida e normalizza un oggetto già letto.
+  PlanDto _toPlanDto(Map<String, dynamic> decoded) {
+    final PlanDto dto;
+    try {
+      dto = PlanDto.fromJson(decoded);
+    } catch (e) {
+      throw PlanParseException(
+        'JSON non conforme allo schema della scheda: $e',
+        cause: e,
+      );
+    }
 
-    final start = raw.indexOf('{');
-    if (start < 0) return null;
+    // Validazione sulla risposta così com'è: i riferimenti nei messaggi
+    // d'errore ("giorno 2, blocco 3") devono corrispondere a ciò che il
+    // modello ha scritto, perché è a lui che tornano nel retry.
+    final issues = validate(dto);
+    if (issues.isNotEmpty) {
+      throw PlanParseException('Scheda non valida: ${issues.join('; ')}.');
+    }
+    return normalizePlanDto(dto);
+  }
+
+  /// "Non ho trovato JSON" e "il JSON finisce a metà" sono due problemi
+  /// diversi per chi incolla a mano una risposta: il secondo si risolve
+  /// tornando nella chat a copiare tutto, e va detto.
+  PlanParseException _noJsonFound(String raw) {
+    return raw.contains('{')
+        ? const PlanParseException(
+            'Il JSON è incompleto: manca la parentesi graffa di chiusura. '
+            'Probabilmente la risposta è stata copiata solo in parte.',
+          )
+        : const PlanParseException(
+            'Nessun oggetto JSON trovato nella risposta.',
+          );
+  }
+
+  /// I possibili oggetti JSON dentro [raw], in ordine di attendibilità:
+  /// prima quelli dentro i blocchi recintati ```…``` (è lì che una chat mette
+  /// il risultato), poi ogni oggetto `{…}` bilanciato del testo grezzo.
+  ///
+  /// **Dall'ultimo al primo**, in entrambi i passaggi. Chi incolla a mano
+  /// spesso porta con sé l'intera conversazione, e il prompt che abbiamo
+  /// fatto copiare contiene un esempio di scheda completo e valido: preso in
+  /// ordine di lettura vincerebbe l'esempio, e l'utente si ritroverebbe in
+  /// revisione una scheda che non è la sua. La risposta, in una
+  /// conversazione, viene dopo la domanda.
+  List<String> _jsonCandidates(String raw) {
+    final candidates = <String>[];
+    void collect(Iterable<String> found) {
+      for (final object in found.toList().reversed) {
+        if (!candidates.contains(object)) candidates.add(object);
+      }
+    }
+
+    for (final match in _fencedBlock.allMatches(raw).toList().reversed) {
+      collect(_balancedObjects(match.group(1)!));
+    }
+    collect(_balancedObjects(raw));
+    return candidates;
+  }
+
+  /// Tutti gli oggetti `{…}` bilanciati di primo livello, nell'ordine in cui
+  /// compaiono. Una graffa che non si chiude non ferma la ricerca: si
+  /// riparte dalla successiva, altrimenti una parentesi lasciata nel discorso
+  /// nasconderebbe il JSON che viene dopo.
+  List<String> _balancedObjects(String source) {
+    final objects = <String>[];
+    var from = 0;
+    while (true) {
+      final start = source.indexOf('{', from);
+      if (start < 0) return objects;
+      final end = _matchingBrace(source, start);
+      if (end < 0) {
+        from = start + 1;
+        continue;
+      }
+      objects.add(source.substring(start, end + 1));
+      from = end + 1;
+    }
+  }
+
+  /// Indice della graffa che chiude quella in [start], -1 se non si chiude.
+  int _matchingBrace(String source, int start) {
     var depth = 0;
     var inString = false;
     var escaped = false;
-    for (var i = start; i < raw.length; i++) {
-      final char = raw[i];
+    for (var i = start; i < source.length; i++) {
+      final char = source[i];
       if (escaped) {
         escaped = false;
         continue;
@@ -247,9 +311,119 @@ class PlanParser {
       if (char == '{') depth++;
       if (char == '}') {
         depth--;
-        if (depth == 0) return raw.substring(start, i + 1);
+        if (depth == 0) return i;
       }
     }
-    return null;
+    return -1;
+  }
+
+  /// Decodifica un candidato, riprovando con le riparazioni che servono a un
+  /// JSON arrivato per gli appunti invece che da un'API.
+  Map<String, dynamic> _decodeObject(String candidate) {
+    FormatException? failure;
+    for (final attempt in _decodeAttempts(candidate)) {
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(attempt);
+      } on FormatException catch (e) {
+        failure ??= e;
+        continue;
+      }
+      if (decoded is! Map<String, dynamic>) {
+        throw const PlanParseException(
+          'La risposta JSON non è un oggetto scheda.',
+        );
+      }
+      return decoded;
+    }
+    throw PlanParseException(
+      'JSON malformato: ${failure!.message}',
+      cause: failure,
+    );
+  }
+
+  /// Il testo così com'è per primo — un JSON valido non va mai toccato — e
+  /// solo dopo le varianti riparate.
+  List<String> _decodeAttempts(String candidate) {
+    final attempts = <String>[candidate];
+    void add(String value) {
+      if (!attempts.contains(value)) attempts.add(value);
+    }
+
+    add(_repairJson(candidate));
+    final straight = _straightenQuotes(candidate);
+    if (straight != candidate) {
+      add(straight);
+      add(_repairJson(straight));
+    }
+    return attempts;
+  }
+
+  /// Toglie le due malformazioni che i modelli producono davvero: i commenti
+  /// (`//`, `/* */`, che JSON non ammette) e la virgola dopo l'ultimo
+  /// elemento. Lavora consapevole delle stringhe, così un `//` dentro una
+  /// nota o una virgola dentro un testo restano dove sono.
+  String _repairJson(String source) {
+    final out = <String>[];
+    var inString = false;
+    var escaped = false;
+    for (var i = 0; i < source.length; i++) {
+      final char = source[i];
+      if (inString) {
+        out.add(char);
+        if (escaped) {
+          escaped = false;
+        } else if (char == r'\') {
+          escaped = true;
+        } else if (char == '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (char == '"') {
+        inString = true;
+        out.add(char);
+        continue;
+      }
+      if (char == '/' && i + 1 < source.length) {
+        final next = source[i + 1];
+        if (next == '/') {
+          var end = i + 2;
+          while (end < source.length && source[end] != '\n') {
+            end++;
+          }
+          i = end - 1;
+          continue;
+        }
+        if (next == '*') {
+          final end = source.indexOf('*/', i + 2);
+          i = end < 0 ? source.length : end + 1;
+          continue;
+        }
+      }
+      if (char == '}' || char == ']') {
+        var last = out.length - 1;
+        while (last >= 0 && out[last].trim().isEmpty) {
+          last--;
+        }
+        if (last >= 0 && out[last] == ',') out.removeAt(last);
+      }
+      out.add(char);
+    }
+    return out.join();
+  }
+
+  /// Raddrizza le virgolette tipografiche, ma **solo** se nel candidato non
+  /// ce n'è nemmeno una dritta: vuol dire che qualcosa lungo la strada le ha
+  /// trasformate tutte. Farlo su un JSON già valido rovinerebbe la nota che
+  /// le contiene per davvero.
+  String _straightenQuotes(String source) {
+    if (source.contains('"')) return source;
+    return source.replaceAll(_typographicQuotes, '"');
   }
 }
+
+/// Un blocco recintato con il suo eventuale linguaggio (```json, ```JSON, ```).
+final _fencedBlock = RegExp(r'```[a-zA-Z]*[ \t]*\n?([\s\S]*?)```');
+
+final _typographicQuotes = RegExp('[“”„‟″]');

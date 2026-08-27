@@ -12,8 +12,10 @@ import '../data/repositories/plan_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/workout_log_repository.dart';
 import '../features/ai_import/cubit/ai_import_cubit.dart';
+import '../features/ai_import/cubit/ai_paste_import_cubit.dart';
 import '../features/ai_import/pages/ai_import_page.dart';
 import '../features/ai_import/pages/ai_import_review_args.dart';
+import '../features/ai_import/pages/ai_paste_import_page.dart';
 import '../features/history/cubit/history_detail_cubit.dart';
 import '../features/history/pages/history_detail_page.dart';
 import '../features/history/pages/history_page.dart';
@@ -32,6 +34,7 @@ import '../features/workout/pages/workout_session_page.dart';
 import '../l10n/app_localizations.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_selection.dart';
+import '../services/clipboard/clipboard_service.dart';
 import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
@@ -117,6 +120,21 @@ GoRouter createRouter() {
             ocr: context.read<OcrService>(),
           ),
           child: const AiImportPage(),
+        ),
+      ),
+      // Lo stesso import, ma con l'AI fuori dall'app: l'utente porta il
+      // prompt nella chat che preferisce e riporta indietro la risposta
+      // (RF-03). Nessuna key, nessuna rete: qui non c'è AiProvider.
+      GoRoute(
+        path: '/plans/new/import/paste',
+        builder: (context, state) => BlocProvider(
+          create: (context) => AiPasteImportCubit(
+            imageInput: context.read<ImageInput>(),
+            imageStore: context.read<PlanImageStore>(),
+            ocr: context.read<OcrService>(),
+            clipboard: context.read<ClipboardService>(),
+          ),
+          child: const AiPasteImportPage(),
         ),
       ),
       // Revisione della proposta AI: l'editor manuale (RF-02) su una bozza
