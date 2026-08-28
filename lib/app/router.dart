@@ -19,6 +19,7 @@ import '../features/ai_import/pages/ai_paste_import_page.dart';
 import '../features/history/cubit/history_detail_cubit.dart';
 import '../features/history/pages/history_detail_page.dart';
 import '../features/history/pages/history_page.dart';
+import '../features/legal/pages/legal_notice_page.dart';
 import '../features/plans/cubit/plan_editor_cubit.dart';
 import '../features/plans/pages/plan_detail_page.dart';
 import '../features/plans/pages/plan_editor_page.dart';
@@ -91,6 +92,12 @@ GoRouter createRouter() {
                       ),
                       child: const AiSettingsPage(),
                     ),
+                  ),
+                  // La manleva accettata al primo avvio, rileggibile quando
+                  // si vuole.
+                  GoRoute(
+                    path: 'legal',
+                    builder: (context, state) => const LegalNoticePage(),
                   ),
                 ],
               ),

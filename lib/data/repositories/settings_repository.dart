@@ -1,7 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Configurazione AI dell'utente (RF-08): provider scelto e, per ciascun
-/// provider, API key e modello.
+/// Preferenze dell'utente: configurazione AI (RF-08) — provider scelto e,
+/// per ciascun provider, API key e modello — e accettazione dell'informativa
+/// legale mostrata al primo avvio.
 ///
 /// Key e modello sono per provider, non globali: chi ha configurato
 /// OpenRouter e prova Anthropic non deve reinserire nulla tornando indietro.
@@ -10,9 +11,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// `services/ai/`.
 ///
 /// Le key vivono esclusivamente nel secure storage nativo (Keychain / Android
-/// Keystore), mai in log né negli export (RNF-03). Anche provider e modello
-/// sono salvati qui: sono singole stringhe e non giustificano un secondo
-/// meccanismo di persistenza.
+/// Keystore), mai in log né negli export (RNF-03). Provider, modello e
+/// versione dell'informativa accettata stanno lì accanto: sono singoli valori
+/// e non giustificano un secondo meccanismo di persistenza.
 abstract interface class SettingsRepository {
   /// Id del provider AI scelto; `null` se l'utente non ha mai scelto (si usa
   /// il default del catalogo).
@@ -30,6 +31,16 @@ abstract interface class SettingsRepository {
   Future<String?> getModelId(String providerId);
 
   Future<void> setModelId(String providerId, String? modelId);
+
+  /// Versione dell'informativa legale accettata al primo avvio; `null` se
+  /// l'utente non ha mai accettato nulla.
+  ///
+  /// Sta qui, e non in una entità ObjectBox, per lo stesso motivo del
+  /// modello: è una singola riga di configurazione dell'utente, non un dato
+  /// del dominio.
+  Future<int?> getAcceptedLegalNoticeVersion();
+
+  Future<void> setAcceptedLegalNoticeVersion(int version);
 }
 
 class SecureSettingsRepository implements SettingsRepository {
@@ -39,6 +50,8 @@ class SecureSettingsRepository implements SettingsRepository {
   final FlutterSecureStorage _storage;
 
   static const _providerKey = 'ai.provider';
+
+  static const _legalNoticeKey = 'legal.acceptedNoticeVersion';
 
   /// Le chiavi per provider mantengono lo schema già in uso per OpenRouter
   /// (`ai.openrouter.apiKey`, `ai.openrouter.model`): chi aveva configurato
@@ -68,6 +81,16 @@ class SecureSettingsRepository implements SettingsRepository {
   @override
   Future<void> setModelId(String providerId, String? modelId) =>
       _write(_modelKey(providerId), modelId);
+
+  @override
+  Future<int?> getAcceptedLegalNoticeVersion() async {
+    final value = await _read(_legalNoticeKey);
+    return value == null ? null : int.tryParse(value);
+  }
+
+  @override
+  Future<void> setAcceptedLegalNoticeVersion(int version) =>
+      _write(_legalNoticeKey, '$version');
 
   Future<String?> _read(String key) async {
     final value = await _storage.read(key: key);

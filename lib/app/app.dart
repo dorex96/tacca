@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/legal/widgets/legal_gate.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -30,6 +31,9 @@ class _AppState extends State<App> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _router,
+      // La manleva del primo avvio sta *sopra* al router: finché non è
+      // accettata, `child` (cioè tutte le schermate) non viene montato.
+      builder: (context, child) => LegalGate(child: child!),
     );
   }
 }

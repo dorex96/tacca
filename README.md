@@ -45,6 +45,8 @@ Personal project, pre-1.0. What is actually built:
 
 **AI import through your own chat (no key at all).** The same import with the model outside the app, in two guided steps. Step one takes your plan — typed, pasted, or photographed and read by the phone's on-device OCR into an editable field — and copies a self-contained prompt to the clipboard. You paste it into whichever AI chat you already use, then step two takes the answer back. The pasted text goes through the very same pipeline as the API route, and it does not have to be clean JSON: the parser digs the plan out of greetings, code fences, whole pasted conversations, trailing commas and stray comments. If it still cannot read it, you get the parser's own error formulated as a correction to paste back into the chat — the manual twin of the automatic retry — and, as a last resort, the answer is kept as a free-text block. No API key, no account, no network call: the app never talks to anyone here.
 
+**First-run notice.** Before anything else opens, a blocking disclaimer states what the app is and is not: not a medical app and not medical advice, you train under your own responsibility, the plans and photos you load are yours and stay your responsibility, and an AI import can misread a plan — check it before you train. Acceptance is *versioned*: bumping `AppConstants.legalNoticeVersion` puts the notice back in front of everyone who accepted an older wording. The full terms live on the web and open in the **system browser** — the app embeds no WebView. The same text stays readable from *Impostazioni → Termini e responsabilità*.
+
 ## Getting started
 
 Requirements: **Flutter 3.35.x** (Dart 3.9), and Android 8.0+ (`minSdk 26`) or iOS 15.6+.
@@ -106,8 +108,8 @@ lib/
   app/        composition root, router, theme
   core/       design tokens (colour, type, radius, spacing, icons), shared widgets
   data/       ObjectBox store, entities, repositories
-  features/   plans · ai_import · workout · history · settings
-  services/   ai · timer · notifications · images (OCR) · clipboard · feedback · wakelock
+  features/   plans · ai_import · workout · history · settings · legal
+  services/   ai · timer · notifications · images (OCR) · clipboard · feedback · wakelock · links
 ```
 
 Decisions worth knowing before you read the code:
@@ -119,6 +121,7 @@ Decisions worth knowing before you read the code:
 - **One AI pipeline, in `plan_parser.dart`**: extract JSON → decode → validate → normalize → one automatic retry with the validation error fed back to the model → free-text fallback. Both import routes end here, the keyless one included — what changes is only who performs the corrective retry. Normalization exists because models emit one block per exercise while a block is a *grouping*.
 - **Appearance lives in two places only** — `lib/app/theme.dart` (every component theme) and `lib/core/design/` (colour, spacing, radius, typography and icon tokens). Pages pass no hand-written colours, radii or paddings; user-facing strings go through the ARB file, never inline.
 - **One visual language, one theme.** The look comes from a design file, not from a Material seed colour: near-white background, white cards at radius 26, ink `#192126`, a single lime accent `#BBF246` reserved for the one live thing on screen (the plan in use, the current exercise, the active tab). Lato for the interface, the platform font for prose. There is deliberately no dark theme — it was never designed — so `themeMode` is pinned to light.
+- **Nothing opens inside the app.** The one external link — the terms and conditions — is handed to the system browser through `LinkOpener` (`url_launcher` in `LaunchMode.externalApplication`), and the app copies the link to the clipboard if no browser answers. There is deliberately no in-app browser: a WebView is one more surface to declare and maintain.
 - **Icons are drawn, not fonted.** `lib/core/design/linear_icons.dart` holds the real glyphs of the design's icon set as SVG path data, painted by `LinearIcon`. Material icons are not used in the UI: their optical grid is visibly foreign next to these shapes.
 
 The visual design (colours, typography scale, icon set, layout) is adapted from the free [Gym Full](https://www.figma.com/community/file/1415305484748482666/gym-full-figma) Figma community file.
