@@ -11,6 +11,7 @@ import '../../../core/widgets/pill_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../data/entities/workout_plan.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../workout/widgets/active_session_card.dart';
 import '../cubit/plans_cubit.dart';
 import '../cubit/plans_state.dart';
 import '../widgets/plan_list_tile.dart';
@@ -26,9 +27,18 @@ class PlansPage extends StatelessWidget {
 
     return AppScaffold(
       title: l10n.plansTitle,
+      // La sessione rimasta aperta sta sopra la ricerca e non scorre con la
+      // lista: è la strada per rientrare nell'allenamento lasciato a metà, e
+      // deve essere lì appena si apre l'app.
       header: Padding(
         padding: AppSpacing.pageInsets,
-        child: PlanSearchField(onChanged: context.read<PlansCubit>().search),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const ActiveSessionBanner(),
+            PlanSearchField(onChanged: context.read<PlansCubit>().search),
+          ],
+        ),
       ),
       dock: PillButton(
         label: l10n.plansNewPlan,

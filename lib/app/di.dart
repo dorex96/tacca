@@ -8,7 +8,7 @@ import '../data/repositories/workout_log_repository.dart';
 import '../features/history/cubit/history_cubit.dart';
 import '../features/legal/cubit/legal_notice_cubit.dart';
 import '../features/plans/cubit/plans_cubit.dart';
-import '../features/workout/cubit/resume_session_cubit.dart';
+import '../features/workout/cubit/active_session_cubit.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_selection.dart';
 import '../services/ai/model_catalog.dart';
@@ -150,8 +150,12 @@ class AppProviders extends StatelessWidget {
             create: (context) =>
                 HistoryCubit(repository: context.read<WorkoutLogRepository>()),
           ),
-          BlocProvider<ResumeSessionCubit>(
-            create: (context) => ResumeSessionCubit(
+          // La sessione aperta si segue per tutta la vita dell'app, non si
+          // legge una volta all'avvio: la card di ripresa nell'archivio e il
+          // "una sola per volta" devono essere veri anche dopo che l'utente
+          // è uscito da un allenamento senza chiuderlo.
+          BlocProvider<ActiveSessionCubit>(
+            create: (context) => ActiveSessionCubit(
               repository: context.read<WorkoutLogRepository>(),
             ),
           ),

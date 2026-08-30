@@ -542,6 +542,29 @@
   "@workoutResumeConfirm": { "description": "Conferma di ripresa della sessione." },
   "workoutResumeDismiss": "Più tardi",
   "@workoutResumeDismiss": { "description": "Rinvio della ripresa: la sessione resta in corso." },
+  "workoutActiveSessionLabel": "Allenamento in corso",
+  "@workoutActiveSessionLabel": { "description": "Etichetta della card che, in cima all'archivio schede, riapre la sessione rimasta aperta." },
+  "workoutActiveSessionStartedAt": "Iniziato alle {time}",
+  "@workoutActiveSessionStartedAt": {
+    "description": "Ora di inizio della sessione ancora aperta, sulla card di ripresa.",
+    "placeholders": { "time": { "type": "DateTime", "format": "Hm" } }
+  },
+  "workoutConflictTitle": "C'è già un allenamento in corso",
+  "@workoutConflictTitle": { "description": "Titolo del pannello mostrato quando si avvia una sessione mentre un'altra è ancora aperta: se ne può fare una sola per volta." },
+  "workoutConflictResume": "Riprendi quello in corso",
+  "@workoutConflictResume": { "description": "Opzione che torna nella sessione già aperta invece di iniziarne una nuova." },
+  "workoutConflictResumeSubtitle": "\"{plan}\" — {day}",
+  "@workoutConflictResumeSubtitle": {
+    "description": "Scheda e giorno della sessione in corso, sotto l'opzione di ripresa.",
+    "placeholders": {
+      "plan": { "type": "String" },
+      "day": { "type": "String" }
+    }
+  },
+  "workoutConflictReplace": "Chiudi e inizia il nuovo",
+  "@workoutConflictReplace": { "description": "Opzione che chiude la sessione in corso e apre quella appena richiesta." },
+  "workoutConflictReplaceSubtitle": "L'allenamento in corso viene chiuso come interrotto e resta nello storico.",
+  "@workoutConflictReplaceSubtitle": { "description": "Conseguenza dell'opzione che chiude la sessione in corso: niente va perso." },
 
   "historyFilterAll": "Tutte le schede",
   "@historyFilterAll": { "description": "Voce del filtro storico che non applica alcun filtro per scheda." },
