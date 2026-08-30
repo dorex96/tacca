@@ -67,6 +67,57 @@ Future<bool> showConfirmDialog(
   return confirmed ?? false;
 }
 
+/// Dialog informativo con un solo pulsante di chiusura: stessa forma delle
+/// altre conferme, per spiegazioni che non chiedono una decisione (es. il
+/// pulsante "i" vicino a un titolo).
+Future<void> showInfoDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  Widget? child,
+}) {
+  final l10n = AppLocalizations.of(context);
+
+  return showDialog<void>(
+    context: context,
+    barrierColor: AppColors.scrim,
+    builder: (context) => Dialog(
+      insetPadding: const EdgeInsets.all(AppSpacing.xl),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AppTypography.sheetTitleLong),
+            const SizedBox(height: AppSpacing.md),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(message, style: AppTypography.paragraph),
+                    if (child != null) ...[
+                      const SizedBox(height: AppSpacing.card),
+                      child,
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.card),
+            PillButton(
+              label: l10n.commonClose,
+              tone: PillTone.outline,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Dialog con un campo di testo (rinomina): stessa forma della conferma.
 Future<String?> showTextInputDialog(
   BuildContext context, {
