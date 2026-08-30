@@ -25,6 +25,7 @@ Personal project, pre-1.0. What is actually built:
 | --- | --- |
 | Plans archive, manual editor | ✅ done |
 | Workout session, timers, crash recovery | ✅ done |
+| Lock-screen set confirmation | ✅ done — iOS needs a one-off Xcode setup |
 | History | ✅ done |
 | AI import from photo / gallery / pasted text | ✅ done, **OpenRouter, Anthropic and Google Gemini** |
 | AI import through your own chat, no key needed | ✅ done — copy the prompt, paste the answer back |
@@ -39,6 +40,8 @@ Personal project, pre-1.0. What is actually built:
 
 **Guided session.** Log weight, reps and notes per set, with the previous session's numbers shown as a reference ("last time"). Rest starts automatically after you tick a set; block timers cover EMOM/AMRAP/Tabata/round rest. Only one timer runs at a time, and the timer is **wall-clock based** — it stays exact after the screen turns off or the app is backgrounded, where it hands over to a local notification. Beep, vibration and wakelock while in the foreground. Every action is persisted immediately, so a crash or an accidental exit leaves a session you can resume from the home screen.
 
+**Lock screen.** While a session is open the current exercise is published to the lock screen — a Live Activity (and Dynamic Island) on iOS, an ongoing notification on Android — with the rest countdown drawn by the system and a **Serie fatta** button that ticks the set without unlocking the phone. The tap runs outside the Dart engine, so it is queued and applied when the app comes back, **with the time it was pressed**: the rest starts from when the set actually ended. iOS needs a one-off Xcode setup, described in [docs/ios-live-activity.md](docs/ios-live-activity.md).
+
 **History.** Snapshot-based: each log stores the plan and exercise *names* it was recorded with, so past sessions stay readable after you edit or delete the plan. Filter by plan, drill into a session, see every set.
 
 **AI import (optional, bring your own key).** Photograph a paper plan, pick images from the gallery, or paste text; the model returns a structured plan that lands in the manual editor for review — nothing is saved until you press save. If the selected model has no vision support, the photos go through the phone's on-device OCR first and only the text is sent. If the model fails to produce valid JSON twice in a row, the raw answer is kept as a free-text block: your input is never discarded.
@@ -50,6 +53,8 @@ Personal project, pre-1.0. What is actually built:
 ## Getting started
 
 Requirements: **Flutter 3.35.x** (Dart 3.9), and Android 8.0+ (`minSdk 26`) or iOS 15.6+.
+
+On iOS the lock-screen Live Activity is a second Xcode target that needs an App Group enabling once on your developer account — [docs/ios-live-activity.md](docs/ios-live-activity.md). Skip it and the app still builds and runs; you just get no banner.
 
 ```bash
 flutter pub get
@@ -109,7 +114,7 @@ lib/
   core/       design tokens (colour, type, radius, spacing, icons), shared widgets
   data/       ObjectBox store, entities, repositories
   features/   plans · ai_import · workout · history · settings · legal
-  services/   ai · timer · notifications · images (OCR) · clipboard · feedback · wakelock · links
+  services/   ai · timer · notifications · live_session · images (OCR) · clipboard · feedback · wakelock · links
 ```
 
 Decisions worth knowing before you read the code:
@@ -122,6 +127,7 @@ Decisions worth knowing before you read the code:
 - **Appearance lives in two places only** — `lib/app/theme.dart` (every component theme) and `lib/core/design/` (colour, spacing, radius, typography and icon tokens). Pages pass no hand-written colours, radii or paddings; user-facing strings go through the ARB file, never inline.
 - **One visual language, one theme.** The look comes from a design file, not from a Material seed colour: near-white background, white cards at radius 26, ink `#192126`, a single lime accent `#BBF246` reserved for the one live thing on screen (the plan in use, the current exercise, the active tab). Lato for the interface, the platform font for prose. There is deliberately no dark theme — it was never designed — so `themeMode` is pinned to light.
 - **Nothing opens inside the app.** The one external link — the terms and conditions — is handed to the system browser through `LinkOpener` (`url_launcher` in `LaunchMode.externalApplication`), and the app copies the link to the clipboard if no browser answers. There is deliberately no in-app browser: a WebView is one more surface to declare and maintain.
+- **The lock screen is a service, not a widget.** `services/live_session/` publishes an immutable snapshot to whatever surface the platform offers and hands back the confirmations that arrive from it; the two implementations share nothing but that contract. Because the button runs in another process (an iOS App Intent, an Android broadcast), confirmations go through a durable queue and are applied with the timestamp of the tap.
 - **Icons are drawn, not fonted.** `lib/core/design/linear_icons.dart` holds the real glyphs of the design's icon set as SVG path data, painted by `LinearIcon`. Material icons are not used in the UI: their optical grid is visibly foreign next to these shapes.
 
 The visual design (colours, typography scale, icon set, layout) is adapted from the free [Gym Full](https://www.figma.com/community/file/1415305484748482666/gym-full-figma) Figma community file.

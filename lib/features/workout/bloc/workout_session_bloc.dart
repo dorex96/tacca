@@ -9,6 +9,7 @@ import '../../../data/entities/workout_log.dart';
 import '../../../data/repositories/plan_repository.dart';
 import '../../../data/repositories/workout_log_repository.dart';
 import '../../../services/feedback/session_feedback.dart';
+import '../../../services/live_session/live_session_controller.dart';
 import '../../../services/notifications/session_notifier.dart';
 import '../../../services/timer/timer_engine.dart';
 import '../../../services/wakelock/screen_wake.dart';
@@ -25,8 +26,13 @@ import 'workout_session_state.dart';
 ///   periodico;
 /// - il Bloc si iscrive a [TimerEngine.stream] e ritrasmette come
 ///   [TimerTicked]: mai `emit` da una callback esterna;
-/// - suoni, notifiche e wake lock passano da servizi astratti, così la
-///   sessione resta testabile senza plugin.
+/// - suoni, notifiche, wake lock e superficie di sistema passano da servizi
+///   astratti, così la sessione resta testabile senza plugin.
+///
+/// La superficie di sistema ([LiveSessionController]) è l'unica sorgente di
+/// eventi che può arrivare **a app spenta**: la conferma di una serie fatta
+/// dalla schermata di blocco viene applicata con l'orario del tap, non con
+/// quello del risveglio.
 class WorkoutSessionBloc
     extends Bloc<WorkoutSessionEvent, WorkoutSessionState> {
   WorkoutSessionBloc({
@@ -36,6 +42,8 @@ class WorkoutSessionBloc
     required SessionFeedback feedback,
     required SessionNotifier notifier,
     required ScreenWake screenWake,
+    required LiveSessionController liveSession,
+    required LiveSessionLabels liveLabels,
     DateTime Function()? now,
   }) : _planRepository = planRepository,
        _logRepository = logRepository,
@@ -43,11 +51,14 @@ class WorkoutSessionBloc
        _feedback = feedback,
        _notifier = notifier,
        _screenWake = screenWake,
+       _liveSession = liveSession,
+       _liveLabels = liveLabels,
        _now = now ?? DateTime.now,
        super(const WorkoutSessionState()) {
     on<SessionStarted>(_onSessionStarted);
     on<SessionResumed>(_onSessionResumed);
     on<SetCompleted>(_onSetCompleted);
+    on<LiveActionReceived>(_onLiveActionReceived);
     on<SetUnchecked>(_onSetUnchecked);
     on<SetLogged>(_onSetLogged);
     on<ExerciseFocused>(_onExerciseFocused);
@@ -67,6 +78,9 @@ class WorkoutSessionBloc
     _signalSub = _timerEngine.signals.listen(
       (signal) => add(TimerSignalled(signal)),
     );
+    _liveSub = _liveSession.actions.listen(
+      (action) => add(LiveActionReceived(action)),
+    );
   }
 
   final PlanRepository _planRepository;
@@ -75,10 +89,17 @@ class WorkoutSessionBloc
   final SessionFeedback _feedback;
   final SessionNotifier _notifier;
   final ScreenWake _screenWake;
+  final LiveSessionController _liveSession;
+  final LiveSessionLabels _liveLabels;
   final DateTime Function() _now;
 
   late final StreamSubscription<TimerState> _tickSub;
   late final StreamSubscription<TimerSignal> _signalSub;
+  late final StreamSubscription<LiveSessionAction> _liveSub;
+
+  /// Azioni già applicate: la stessa conferma può arrivare due volte, dallo
+  /// stream e dalla coda drenata al rientro in primo piano.
+  final Set<String> _appliedLiveActions = {};
 
   // --- apertura della sessione ---
 
@@ -121,6 +142,7 @@ class WorkoutSessionBloc
     }
 
     await _prepareDevices();
+    _publishLive(starting: true);
   }
 
   Future<void> _onSessionResumed(
@@ -153,6 +175,7 @@ class WorkoutSessionBloc
     );
 
     await _prepareDevices();
+    _publishLive(starting: true);
   }
 
   Future<void> _prepareDevices() async {
@@ -227,26 +250,69 @@ class WorkoutSessionBloc
   // --- registrazione delle serie ---
 
   void _onSetCompleted(SetCompleted event, Emitter<WorkoutSessionState> emit) {
-    final item = _itemAt(event.entryIndex);
-    if (item == null || item.isSetDone(event.setNumber)) return;
+    _completeSet(
+      entryIndex: event.entryIndex,
+      setNumber: event.setNumber,
+      at: _now(),
+      emit: emit,
+    );
+  }
 
-    final prefill = _prefillFor(item, event.setNumber);
+  /// Conferma arrivata da fuori: Live Activity o notifica persistente.
+  ///
+  /// Si scartano le azioni di un'altra sessione (una coda rimasta indietro non
+  /// deve finire nel log sbagliato) e i doppioni, riconosciuti dall'id.
+  void _onLiveActionReceived(
+    LiveActionReceived event,
+    Emitter<WorkoutSessionState> emit,
+  ) {
+    final action = event.action;
+    if (state.log?.id != action.logId) return;
+    if (!_appliedLiveActions.add(action.id)) return;
+
+    switch (action.kind) {
+      case LiveSessionActionKind.setCompleted:
+        _completeSet(
+          entryIndex: action.entryIndex,
+          setNumber: action.setNumber,
+          at: action.at,
+          emit: emit,
+        );
+    }
+  }
+
+  /// Registra una serie svolta a [at] e, se previsto, avvia il recupero.
+  void _completeSet({
+    required int entryIndex,
+    required int setNumber,
+    required DateTime at,
+    required Emitter<WorkoutSessionState> emit,
+  }) {
+    final item = _itemAt(entryIndex);
+    if (item == null || item.isSetDone(setNumber)) return;
+
+    final prefill = _prefillFor(item, setNumber);
     item.entry.sets.add(
       LogSet(
-        setNumber: event.setNumber,
+        setNumber: setNumber,
         reps: prefill.reps,
         weightKg: prefill.weightKg,
-        completedAt: _now(),
+        completedAt: at,
       ),
     );
 
-    _persist(emit, currentIndex: event.entryIndex);
+    _persist(emit, currentIndex: entryIndex);
 
     // L'avvio automatico non interrompe mai un timer già in corso: il
     // conflitto va risolto dall'utente, non silenziosamente (§9).
     if (!state.autoStartRest || _timerEngine.isRunning) return;
     final spec = restTimerSpec(item, label: item.name);
-    if (spec != null) add(TimerRequested(spec));
+    if (spec == null) return;
+    // Il recupero parte da quando la serie è finita. Se nel frattempo è già
+    // scaduto — conferma dalla schermata di blocco e app riaperta molto dopo —
+    // non si avvia un countdown che nascerebbe morto, con tanto di beep.
+    if (!at.add(spec.total).isAfter(_now())) return;
+    add(TimerRequested(spec, startedAt: at));
   }
 
   void _onSetUnchecked(SetUnchecked event, Emitter<WorkoutSessionState> emit) {
@@ -290,6 +356,7 @@ class WorkoutSessionBloc
     final all = state.items;
     if (all.isEmpty) return;
     emit(state.copyWith(currentIndex: event.index.clamp(0, all.length - 1)));
+    _publishLive();
   }
 
   ({double? weightKg, String? reps}) _prefillFor(
@@ -326,7 +393,8 @@ class WorkoutSessionBloc
       return;
     }
     emit(state.copyWith(pendingTimerRequest: null));
-    _timerEngine.start(event.spec);
+    _timerEngine.start(event.spec, startedAt: event.startedAt);
+    _publishLive();
   }
 
   void _onTimerRequestDismissed(
@@ -337,7 +405,13 @@ class WorkoutSessionBloc
   }
 
   void _onTimerTicked(TimerTicked event, Emitter<WorkoutSessionState> emit) {
+    // La superficie di sistema non si aggiorna a ogni tick: il countdown lo
+    // disegna il sistema partendo dall'istante di fine. Serve un solo
+    // aggiornamento, quando quell'istante non è più nel futuro.
+    final justFinished =
+        event.timer.isFinished && !(state.timer?.isFinished ?? true);
     emit(state.copyWith(timer: event.timer));
+    if (justFinished) _publishLive();
   }
 
   Future<void> _onTimerSignalled(
@@ -350,6 +424,7 @@ class WorkoutSessionBloc
   void _onTimerStopped(TimerStopped event, Emitter<WorkoutSessionState> emit) {
     _timerEngine.stop();
     emit(state.copyWith(timer: null));
+    _publishLive();
   }
 
   void _onAutoStartRestToggled(
@@ -379,6 +454,12 @@ class WorkoutSessionBloc
     // Al rientro i tick sono stati sospesi dal sistema ma il tempo è passato:
     // lo stato si ricalcola dall'orologio (§7).
     _timerEngine.reconcile();
+
+    // Le conferme date dalla schermata di blocco sono rimaste in coda: si
+    // applicano adesso, con l'orario in cui l'utente le ha date.
+    for (final action in await _liveSession.drainPendingActions()) {
+      add(LiveActionReceived(action));
+    }
   }
 
   // --- chiusura ---
@@ -407,7 +488,101 @@ class WorkoutSessionBloc
     );
 
     await _notifier.cancelPending();
+    await _liveSession.stop();
     await _screenWake.disable();
+  }
+
+  // --- superficie di sistema ---
+
+  /// Ripubblica la sessione sulla schermata di blocco.
+  ///
+  /// Non si attende il risultato: la superficie è un di più, un errore di
+  /// piattaforma non deve rallentare né interrompere la sessione (i servizi
+  /// segnalano da sé i propri errori).
+  void _publishLive({bool starting = false}) {
+    final snapshot = _liveSnapshot();
+    if (snapshot == null) return;
+    unawaited(
+      starting ? _liveSession.start(snapshot) : _liveSession.update(snapshot),
+    );
+  }
+
+  /// Stato da mostrare fuori dall'app: l'esercizio con la prossima serie da
+  /// spuntare e, se ce n'è uno, il countdown in corso.
+  LiveSessionSnapshot? _liveSnapshot() {
+    final log = state.log;
+    if (log == null || state.status != WorkoutSessionStatus.ready) return null;
+
+    final focus = _liveFocus();
+    final item = focus?.item ?? state.currentItem;
+    if (item == null) return null;
+
+    final countdown = _liveCountdown();
+    final restSpec = (focus != null && state.autoStartRest)
+        ? restTimerSpec(focus.item)
+        : null;
+
+    return LiveSessionSnapshot(
+      logId: log.id,
+      exerciseName: item.name,
+      entryIndex: item.index,
+      setNumber: focus?.setNumber ?? 0,
+      totalSets: item.displayedSets,
+      canCompleteSet: focus != null,
+      restSecondsOnComplete: restSpec?.total.inSeconds ?? 0,
+      countdownStartsAt: countdown.startsAt,
+      countdownEndsAt: countdown.endsAt,
+      countdownLabel: countdown.label,
+      labels: _liveLabels,
+    );
+  }
+
+  /// Countdown da mostrare fuori dall'app.
+  ///
+  /// Si legge dal motore e non dallo stato: `start` lo aggiorna subito, mentre
+  /// `state.timer` arriva solo col tick successivo. A recupero scaduto restano
+  /// l'etichetta e nessun numero — il countdown lo disegna il sistema a
+  /// partire dall'istante di fine, e a zero si ferma da solo.
+  ({DateTime? startsAt, DateTime? endsAt, String? label}) _liveCountdown() {
+    final timer = _timerEngine.current;
+    if (timer == null || timer.spec.isCountUp) {
+      return (startsAt: null, endsAt: null, label: null);
+    }
+    if (timer.isFinished) {
+      return (
+        startsAt: null,
+        endsAt: null,
+        label: timer.spec.kind == TimerKind.rest
+            ? _liveLabels.restDoneLabel
+            : null,
+      );
+    }
+    return (
+      startsAt: timer.startedAt,
+      endsAt: timer.startedAt.add(timer.spec.total),
+      label: timer.spec.kind == TimerKind.rest
+          ? _liveLabels.restLabel
+          : (timer.spec.label ?? _liveLabels.restLabel),
+    );
+  }
+
+  /// Prossima serie da confermare: si parte dall'esercizio in evidenza e si
+  /// prosegue in sequenza, perché il pulsante della schermata di blocco deve
+  /// spuntare qualcosa di sensato anche quando l'esercizio corrente è finito.
+  ({SessionItem item, int setNumber})? _liveFocus() {
+    final all = state.items;
+    if (all.isEmpty) return null;
+    final start = state.currentIndex.clamp(0, all.length - 1);
+    for (var offset = 0; offset < all.length; offset++) {
+      final item = all[(start + offset) % all.length];
+      final total = item.displayedSets;
+      for (var setNumber = 1; setNumber <= total; setNumber++) {
+        if (!item.isSetDone(setNumber)) {
+          return (item: item, setNumber: setNumber);
+        }
+      }
+    }
+    return null;
   }
 
   // --- helper ---
@@ -436,6 +611,7 @@ class WorkoutSessionBloc
         errorMessage: error,
       ),
     );
+    _publishLive();
   }
 
   void _save(WorkoutLog log) {
@@ -454,7 +630,11 @@ class WorkoutSessionBloc
     _timerEngine.stop();
     await _tickSub.cancel();
     await _signalSub.cancel();
+    await _liveSub.cancel();
     await _notifier.cancelPending();
+    // La superficie si spegne, non si smonta: il controller è dell'app, non
+    // della singola sessione.
+    await _liveSession.stop();
     await _screenWake.disable();
     return super.close();
   }

@@ -40,6 +40,7 @@ import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
 import '../services/images/plan_image_store.dart';
+import '../services/live_session/live_session_controller.dart';
 import '../services/notifications/session_notifier.dart';
 import '../services/timer/timer_engine.dart';
 import '../services/wakelock/screen_wake.dart';
@@ -221,6 +222,10 @@ GoRouter createRouter() {
 }
 
 WorkoutSessionBloc _createSessionBloc(BuildContext context) {
+  // Le etichette della schermata di blocco le disegna il sistema operativo,
+  // che gli ARB non può leggerli: si prendono qui, dove un `BuildContext` c'è,
+  // e viaggiano nel payload verso il nativo.
+  final l10n = AppLocalizations.of(context);
   return WorkoutSessionBloc(
     planRepository: context.read<PlanRepository>(),
     logRepository: context.read<WorkoutLogRepository>(),
@@ -228,6 +233,14 @@ WorkoutSessionBloc _createSessionBloc(BuildContext context) {
     feedback: context.read<SessionFeedback>(),
     notifier: context.read<SessionNotifier>(),
     screenWake: context.read<ScreenWake>(),
+    liveSession: context.read<LiveSessionController>(),
+    liveLabels: LiveSessionLabels(
+      title: l10n.workoutLiveTitle,
+      setsLabel: l10n.workoutLiveSets,
+      completeAction: l10n.workoutLiveCompleteSet,
+      restLabel: l10n.workoutTimerRest,
+      restDoneLabel: l10n.workoutLiveRestDone,
+    ),
   );
 }
 

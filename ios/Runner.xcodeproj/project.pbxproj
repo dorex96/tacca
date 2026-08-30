@@ -16,6 +16,15 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		A11CE0000000000000000018 /* TaccaLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE000000000000000000F /* TaccaLiveActivityBundle.swift */; };
+		A11CE0000000000000000019 /* SessionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000010 /* SessionLiveActivity.swift */; };
+		A11CE000000000000000001A /* CompleteSetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000011 /* CompleteSetIntent.swift */; };
+		A11CE000000000000000001B /* TaccaSessionAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000014 /* TaccaSessionAttributes.swift */; };
+		A11CE000000000000000001C /* PendingActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000015 /* PendingActionStore.swift */; };
+		A11CE000000000000000001D /* TaccaSessionAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000014 /* TaccaSessionAttributes.swift */; };
+		A11CE000000000000000001E /* PendingActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000015 /* PendingActionStore.swift */; };
+		A11CE000000000000000001F /* LiveSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000016 /* LiveSessionBridge.swift */; };
+		A11CE0000000000000000020 /* TaccaLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000002 /* TaccaLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +34,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		A11CE000000000000000000C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A11CE0000000000000000001;
+			remoteInfo = TaccaLiveActivity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -37,6 +53,17 @@
 			files = (
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A11CE000000000000000000A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A11CE0000000000000000020 /* TaccaLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -65,6 +92,17 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B08E6192162524434449C502 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		A11CE0000000000000000002 /* TaccaLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaccaLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A11CE000000000000000000F /* TaccaLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaccaLiveActivityBundle.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000010 /* SessionLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLiveActivity.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000011 /* CompleteSetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompleteSetIntent.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A11CE0000000000000000013 /* TaccaLiveActivity.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaccaLiveActivity.entitlements; sourceTree = "<group>"; };
+		A11CE0000000000000000014 /* TaccaSessionAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaccaSessionAttributes.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000015 /* PendingActionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingActionStore.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000016 /* LiveSessionBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionBridge.swift; sourceTree = "<group>"; };
+		A11CE0000000000000000017 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
+		A11CE0000000000000000021 /* LiveActivity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = LiveActivity.xcconfig; path = Flutter/LiveActivity.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +119,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				3D3B9DAF42AC4AE14DBBF03E /* Pods_RunnerTests.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A11CE0000000000000000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,6 +156,7 @@
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
+				A11CE0000000000000000021 /* LiveActivity.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -120,6 +166,8 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
+				A11CE000000000000000000E /* LiveSessionShared */,
+				A11CE000000000000000000D /* TaccaLiveActivity */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				CFE398DB9BE778F5126D4D38 /* Pods */,
@@ -132,6 +180,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				A11CE0000000000000000002 /* TaccaLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -146,6 +195,8 @@
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+				A11CE0000000000000000016 /* LiveSessionBridge.swift */,
+				A11CE0000000000000000017 /* Runner.entitlements */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -162,6 +213,27 @@
 				B08E6192162524434449C502 /* Pods-RunnerTests.profile.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		A11CE000000000000000000E /* LiveSessionShared */ = {
+			isa = PBXGroup;
+			children = (
+				A11CE0000000000000000014 /* TaccaSessionAttributes.swift */,
+				A11CE0000000000000000015 /* PendingActionStore.swift */,
+			);
+			path = LiveSessionShared;
+			sourceTree = "<group>";
+		};
+		A11CE000000000000000000D /* TaccaLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				A11CE000000000000000000F /* TaccaLiveActivityBundle.swift */,
+				A11CE0000000000000000010 /* SessionLiveActivity.swift */,
+				A11CE0000000000000000011 /* CompleteSetIntent.swift */,
+				A11CE0000000000000000012 /* Info.plist */,
+				A11CE0000000000000000013 /* TaccaLiveActivity.entitlements */,
+			);
+			path = TaccaLiveActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -196,17 +268,36 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				A11CE000000000000000000A /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				E1A88454D7B830D0CFD17F85 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A11CE000000000000000000B /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A11CE0000000000000000001 /* TaccaLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A11CE0000000000000000003 /* Build configuration list for PBXNativeTarget "TaccaLiveActivity" */;
+			buildPhases = (
+				A11CE0000000000000000007 /* Sources */,
+				A11CE0000000000000000008 /* Frameworks */,
+				A11CE0000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TaccaLiveActivity;
+			productName = TaccaLiveActivity;
+			productReference = A11CE0000000000000000002 /* TaccaLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -226,6 +317,9 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					A11CE0000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -243,6 +337,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				A11CE0000000000000000001 /* TaccaLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -263,6 +358,13 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A11CE0000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -378,6 +480,21 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				A11CE000000000000000001F /* LiveSessionBridge.swift in Sources */,
+				A11CE000000000000000001D /* TaccaSessionAttributes.swift in Sources */,
+				A11CE000000000000000001E /* PendingActionStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A11CE0000000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A11CE0000000000000000018 /* TaccaLiveActivityBundle.swift in Sources */,
+				A11CE0000000000000000019 /* SessionLiveActivity.swift in Sources */,
+				A11CE000000000000000001A /* CompleteSetIntent.swift in Sources */,
+				A11CE000000000000000001B /* TaccaSessionAttributes.swift in Sources */,
+				A11CE000000000000000001C /* PendingActionStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,6 +505,11 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		A11CE000000000000000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A11CE0000000000000000001 /* TaccaLiveActivity */;
+			targetProxy = A11CE000000000000000000C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -472,6 +594,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 86UKG3NAA4;
 				ENABLE_BITCODE = NO;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tacca;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -663,6 +786,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 86UKG3NAA4;
 				ENABLE_BITCODE = NO;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tacca;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -694,6 +818,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 86UKG3NAA4;
 				ENABLE_BITCODE = NO;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tacca;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -714,6 +839,92 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
+		};
+		A11CE0000000000000000004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CE0000000000000000021 /* LiveActivity.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = TaccaLiveActivity/TaccaLiveActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 86UKG3NAA4;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TaccaLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tverdohleb.tacca.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A11CE0000000000000000005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CE0000000000000000021 /* LiveActivity.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = TaccaLiveActivity/TaccaLiveActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 86UKG3NAA4;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TaccaLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tverdohleb.tacca.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A11CE0000000000000000006 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CE0000000000000000021 /* LiveActivity.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = TaccaLiveActivity/TaccaLiveActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 86UKG3NAA4;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TaccaLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tverdohleb.tacca.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Profile;
 		};
 /* End XCBuildConfiguration section */
 
@@ -744,6 +955,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A11CE0000000000000000003 /* Build configuration list for PBXNativeTarget "TaccaLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A11CE0000000000000000004 /* Debug */,
+				A11CE0000000000000000005 /* Release */,
+				A11CE0000000000000000006 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

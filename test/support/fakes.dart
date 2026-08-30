@@ -15,6 +15,7 @@ import 'package:tacca/services/images/image_input.dart';
 import 'package:tacca/services/images/ocr_service.dart';
 import 'package:tacca/services/images/plan_image_store.dart';
 import 'package:tacca/services/links/link_opener.dart';
+import 'package:tacca/services/live_session/live_session_controller.dart';
 import 'package:tacca/services/notifications/session_notifier.dart';
 import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:tacca/services/wakelock/screen_wake.dart';
@@ -186,6 +187,65 @@ class RecordingSessionNotifier implements SessionNotifier {
 
   @override
   Future<void> cancelPending() async => cancelCount++;
+}
+
+/// Etichette della schermata di blocco: in produzione arrivano dagli ARB
+/// passando dal router, nei test bastano queste.
+const kTestLiveLabels = LiveSessionLabels(
+  title: 'Allenamento',
+  setsLabel: 'Serie',
+  completeAction: 'Serie fatta',
+  restLabel: 'Recupero',
+  restDoneLabel: 'Recupero finito',
+);
+
+/// Registra quello che finisce sulla schermata di blocco e permette di
+/// simulare una conferma arrivata da lì, senza Live Activity né notifiche.
+class RecordingLiveSession implements LiveSessionController {
+  final List<LiveSessionSnapshot> started = [];
+  final List<LiveSessionSnapshot> updated = [];
+  int stopCount = 0;
+
+  /// Azioni che il prossimo [drainPendingActions] restituirà: è la coda
+  /// riempita dal nativo mentre l'app era ferma.
+  List<LiveSessionAction> pending = [];
+
+  final _controller = StreamController<LiveSessionAction>.broadcast();
+
+  /// Ultimo stato pubblicato, da qualunque delle due strade.
+  LiveSessionSnapshot? get last => updated.isNotEmpty
+      ? updated.last
+      : (started.isNotEmpty ? started.last : null);
+
+  /// Conferma consegnata subito, con l'app ancora viva.
+  void deliver(LiveSessionAction action) => _controller.add(action);
+
+  @override
+  Stream<LiveSessionAction> get actions => _controller.stream;
+
+  @override
+  Future<bool> isSupported() async => true;
+
+  @override
+  Future<void> start(LiveSessionSnapshot snapshot) async =>
+      started.add(snapshot);
+
+  @override
+  Future<void> update(LiveSessionSnapshot snapshot) async =>
+      updated.add(snapshot);
+
+  @override
+  Future<void> stop() async => stopCount++;
+
+  @override
+  Future<List<LiveSessionAction>> drainPendingActions() async {
+    final queued = pending;
+    pending = [];
+    return queued;
+  }
+
+  @override
+  Future<void> dispose() async => _controller.close();
 }
 
 /// Traccia le richieste di wake lock.

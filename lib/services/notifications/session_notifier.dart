@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+
+import 'notification_host.dart';
 
 /// Tetto di notifiche programmate per volta (§7): si copre l'immediato
 /// futuro senza inondare il sistema di alarm.
@@ -35,8 +34,8 @@ abstract interface class SessionNotifier {
 /// operativo — su iOS in particolare — e va verificata su device reale. La
 /// modalità primaria resta lo schermo acceso con wake lock.
 class LocalSessionNotifier implements SessionNotifier {
-  LocalSessionNotifier({FlutterLocalNotificationsPlugin? plugin})
-    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  LocalSessionNotifier({NotificationHost? host})
+    : _host = host ?? NotificationHost();
 
   /// Intervallo di id riservato ai segnali del timer: `cancelPending` li
   /// annulla uno per uno senza toccare eventuali notifiche di altre feature.
@@ -47,43 +46,13 @@ class LocalSessionNotifier implements SessionNotifier {
   static const _channelDescription =
       'Segnali dei timer durante la sessione di allenamento';
 
-  final FlutterLocalNotificationsPlugin _plugin;
+  final NotificationHost _host;
   bool _ready = false;
   int _scheduledCount = 0;
 
   @override
   Future<void> prepare() async {
-    if (_ready) return;
-    try {
-      tz_data.initializeTimeZones();
-      final localZone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(localZone.identifier));
-
-      await _plugin.initialize(
-        settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(
-            // I permessi si chiedono all'avvio della prima sessione, non
-            // all'apertura dell'app: il consenso arriva quando il motivo è
-            // evidente all'utente.
-            requestAlertPermission: true,
-            requestSoundPermission: true,
-            requestBadgePermission: false,
-          ),
-        ),
-      );
-
-      final android = _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      await android?.requestNotificationsPermission();
-      await android?.requestExactAlarmsPermission();
-
-      _ready = true;
-    } catch (error, stackTrace) {
-      _report('inizializzazione notifiche', error, stackTrace);
-    }
+    _ready = await _host.ensureInitialized();
   }
 
   @override
@@ -114,7 +83,7 @@ class LocalSessionNotifier implements SessionNotifier {
         : times;
     for (var i = 0; i < capped.length; i++) {
       try {
-        await _plugin.zonedSchedule(
+        await _host.plugin.zonedSchedule(
           id: _firstId + i,
           scheduledDate: tz.TZDateTime.from(capped[i], tz.local),
           title: title,
@@ -124,7 +93,7 @@ class LocalSessionNotifier implements SessionNotifier {
         );
         _scheduledCount = i + 1;
       } catch (error, stackTrace) {
-        _report('programmazione notifica', error, stackTrace);
+        reportNotificationError('programmazione notifica', error, stackTrace);
         break;
       }
     }
@@ -134,22 +103,11 @@ class LocalSessionNotifier implements SessionNotifier {
   Future<void> cancelPending() async {
     for (var i = 0; i < _scheduledCount; i++) {
       try {
-        await _plugin.cancel(id: _firstId + i);
+        await _host.plugin.cancel(id: _firstId + i);
       } catch (error, stackTrace) {
-        _report('annullamento notifica', error, stackTrace);
+        reportNotificationError('annullamento notifica', error, stackTrace);
       }
     }
     _scheduledCount = 0;
-  }
-
-  void _report(String what, Object error, StackTrace stackTrace) {
-    FlutterError.reportError(
-      FlutterErrorDetails(
-        exception: error,
-        stack: stackTrace,
-        library: 'session_notifier',
-        context: ErrorDescription(what),
-      ),
-    );
   }
 }

@@ -96,6 +96,8 @@ void main() {
                   feedback: RecordingSessionFeedback(),
                   notifier: RecordingSessionNotifier(),
                   screenWake: RecordingScreenWake(),
+                  liveSession: RecordingLiveSession(),
+                  liveLabels: kTestLiveLabels,
                   now: () => _now,
                 )..add(SessionStarted(planId: 1, dayId: dayId)),
                 child: const WorkoutSessionPage(),

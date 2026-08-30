@@ -1,0 +1,11 @@
+// Configurazione del target dell'estensione (Live Activity).
+//
+// Serve a una cosa sola: portarsi dentro FLUTTER_BUILD_NAME e
+// FLUTTER_BUILD_NUMBER. Apple pretende che versione e build dell'estensione
+// coincidano con quelle dell'app, e per l'app le scrive Flutter dentro
+// Generated.xcconfig a partire da `version:` del pubspec.
+//
+// Non include di proposito il file dei Pods: l'estensione non linka né
+// Flutter né i plugin, e trascinarsi dietro i flag del Runner la farebbe solo
+// fallire in fase di link.
+#include "Generated.xcconfig"
