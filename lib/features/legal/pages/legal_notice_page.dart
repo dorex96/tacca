@@ -24,7 +24,7 @@ class LegalNoticePage extends StatelessWidget {
           AppSpacing.xl,
           0,
           AppSpacing.xl,
-          AppSpacing.xxl,
+          AppSpacing.tabBarClearance,
         ),
         children: const [LegalNoticeBody()],
       ),
