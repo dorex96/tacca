@@ -1,4 +1,6 @@
 import 'package:tacca/app/router.dart';
+import 'package:tacca/data/entities/block.dart';
+import 'package:tacca/data/entities/exercise.dart';
 import 'package:tacca/data/entities/workout_day.dart';
 import 'package:tacca/data/entities/workout_log.dart';
 import 'package:tacca/data/entities/workout_plan.dart';
@@ -8,6 +10,11 @@ import 'package:tacca/features/history/cubit/history_cubit.dart';
 import 'package:tacca/features/plans/cubit/plans_cubit.dart';
 import 'package:tacca/features/workout/cubit/active_session_cubit.dart';
 import 'package:tacca/l10n/app_localizations.dart';
+import 'package:tacca/services/feedback/session_feedback.dart';
+import 'package:tacca/services/live_session/live_session_controller.dart';
+import 'package:tacca/services/notifications/session_notifier.dart';
+import 'package:tacca/services/timer/timer_engine.dart';
+import 'package:tacca/services/wakelock/screen_wake.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -235,6 +242,89 @@ void main() {
       expect(find.text('Riprendere l\'allenamento?'), findsNothing);
     },
   );
+
+  testWidgets('apre la modalità allenamento da /workout/new senza eccezioni', (
+    tester,
+  ) async {
+    // La modalità allenamento riempie lo schermo: finestra ampia perché
+    // testata e lista ci stiano senza overflow di layout.
+    tester.view.physicalSize = const Size(1400, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final plans = FakePlanRepository();
+    final logs = FakeWorkoutLogRepository();
+    final now = DateTime(2026, 1, 1);
+    final plan = WorkoutPlan(
+      name: 'Push Pull Legs',
+      createdAt: now,
+      updatedAt: now,
+    )..id = 1;
+    final day = WorkoutDay(label: 'Giorno A')..id = 1;
+    final block = Block.ofType(BlockType.standard)..id = 1;
+    block.exercises.add(
+      Exercise(name: 'Panca piana', sets: 3, reps: '8')..id = 1,
+    );
+    day.blocks.add(block);
+    plan.days.add(day);
+    plans.add(plan);
+
+    final timerEngine = TimerEngine(
+      now: () => now,
+      tickInterval: const Duration(minutes: 30),
+    );
+    addTearDown(timerEngine.dispose);
+    final router = createRouter();
+
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<PlanRepository>.value(value: plans),
+          RepositoryProvider<WorkoutLogRepository>.value(value: logs),
+          RepositoryProvider<TimerEngine>.value(value: timerEngine),
+          RepositoryProvider<SessionFeedback>.value(
+            value: RecordingSessionFeedback(),
+          ),
+          RepositoryProvider<SessionNotifier>.value(
+            value: RecordingSessionNotifier(),
+          ),
+          RepositoryProvider<ScreenWake>.value(value: RecordingScreenWake()),
+          RepositoryProvider<LiveSessionController>.value(
+            value: RecordingLiveSession(),
+          ),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<PlansCubit>(
+              create: (context) => PlansCubit(repository: plans),
+            ),
+            BlocProvider<HistoryCubit>(
+              create: (context) => HistoryCubit(repository: logs),
+            ),
+            BlocProvider<ActiveSessionCubit>(
+              create: (context) => ActiveSessionCubit(repository: logs),
+            ),
+          ],
+          child: MaterialApp.router(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: router,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Costruire questa route risolveva le etichette della schermata di blocco
+    // (ARB) dentro il `create:` del BlocProvider: un lookup che ascolta un
+    // InheritedWidget in un lifecycle che non verrà più richiamato → assertion.
+    router.go('/workout/new?planId=1&dayId=1');
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Giorno A'), findsOneWidget);
+    expect(find.text('Panca piana'), findsOneWidget);
+  });
 
   testWidgets('la card sparisce quando la sessione viene chiusa', (
     tester,

@@ -188,9 +188,10 @@ GoRouter createRouter() {
         builder: (context, state) {
           final planId = int.parse(state.uri.queryParameters['planId']!);
           final dayId = int.parse(state.uri.queryParameters['dayId']!);
+          final liveLabels = _liveSessionLabels(context);
           return BlocProvider(
             create: (context) =>
-                _createSessionBloc(context)
+                _createSessionBloc(context, liveLabels)
                   ..add(SessionStarted(planId: planId, dayId: dayId)),
             child: const WorkoutSessionPage(),
           );
@@ -200,9 +201,11 @@ GoRouter createRouter() {
         path: '/workout/:logId',
         builder: (context, state) {
           final logId = int.parse(state.pathParameters['logId']!);
+          final liveLabels = _liveSessionLabels(context);
           return BlocProvider(
             create: (context) =>
-                _createSessionBloc(context)..add(SessionResumed(logId)),
+                _createSessionBloc(context, liveLabels)
+                  ..add(SessionResumed(logId)),
             child: const WorkoutSessionPage(),
           );
         },
@@ -221,11 +224,26 @@ GoRouter createRouter() {
   );
 }
 
-WorkoutSessionBloc _createSessionBloc(BuildContext context) {
-  // Le etichette della schermata di blocco le disegna il sistema operativo,
-  // che gli ARB non può leggerli: si prendono qui, dove un `BuildContext` c'è,
-  // e viaggiano nel payload verso il nativo.
+// Le etichette della schermata di blocco le disegna il sistema operativo, che
+// gli ARB non può leggerli: si risolvono qui, in fase di build del route (dove
+// dipendere da `Localizations` è lecito), e viaggiano nel payload verso il
+// nativo. Risolverle invece dentro il `create:` del `BlocProvider` registra una
+// dipendenza da un InheritedWidget in un lifecycle che non verrà più richiamato.
+LiveSessionLabels _liveSessionLabels(BuildContext context) {
   final l10n = AppLocalizations.of(context);
+  return LiveSessionLabels(
+    title: l10n.workoutLiveTitle,
+    setsLabel: l10n.workoutLiveSets,
+    completeAction: l10n.workoutLiveCompleteSet,
+    restLabel: l10n.workoutTimerRest,
+    restDoneLabel: l10n.workoutLiveRestDone,
+  );
+}
+
+WorkoutSessionBloc _createSessionBloc(
+  BuildContext context,
+  LiveSessionLabels liveLabels,
+) {
   return WorkoutSessionBloc(
     planRepository: context.read<PlanRepository>(),
     logRepository: context.read<WorkoutLogRepository>(),
@@ -234,13 +252,7 @@ WorkoutSessionBloc _createSessionBloc(BuildContext context) {
     notifier: context.read<SessionNotifier>(),
     screenWake: context.read<ScreenWake>(),
     liveSession: context.read<LiveSessionController>(),
-    liveLabels: LiveSessionLabels(
-      title: l10n.workoutLiveTitle,
-      setsLabel: l10n.workoutLiveSets,
-      completeAction: l10n.workoutLiveCompleteSet,
-      restLabel: l10n.workoutTimerRest,
-      restDoneLabel: l10n.workoutLiveRestDone,
-    ),
+    liveLabels: liveLabels,
   );
 }
 

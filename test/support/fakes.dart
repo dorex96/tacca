@@ -200,6 +200,7 @@ class RecordingSessionFeedback implements SessionFeedback {
 /// Registra le notifiche programmate invece di parlare con il sistema.
 class RecordingSessionNotifier implements SessionNotifier {
   final List<List<DateTime>> scheduled = [];
+  final List<({String title, String body})> scheduledText = [];
   int cancelCount = 0;
 
   @override
@@ -212,6 +213,7 @@ class RecordingSessionNotifier implements SessionNotifier {
     required String body,
   }) async {
     scheduled.add(times);
+    scheduledText.add((title: title, body: body));
   }
 
   @override
