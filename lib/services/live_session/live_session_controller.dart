@@ -8,8 +8,8 @@ import 'dart:async';
 /// stesso: si pubblica uno [LiveSessionSnapshot] e si raccolgono le
 /// [LiveSessionAction] che l'utente ha eseguito da lì.
 ///
-/// **Il tap non passa dal motore Dart.** Su iOS l'App Intent gira nel processo
-/// dell'estensione, su Android il broadcast può arrivare a processo ucciso: in
+/// **Il tap non passa dal motore Dart.** Su iOS l'App Intent gira ad app
+/// sospesa, su Android il broadcast può arrivare a processo ucciso: in
 /// entrambi i casi l'azione viene messa in una coda durabile e l'app la drena
 /// al rientro ([drainPendingActions]). [actions] serve solo alla consegna
 /// immediata quando l'app è ancora viva; l'id dell'azione permette di
@@ -45,7 +45,8 @@ abstract interface class LiveSessionController {
 ///
 /// Contiene tutto quello che serve al nativo per disegnare il banner **e** per
 /// reagire da solo al tap: [restSecondsOnComplete] gli permette di far partire
-/// il countdown senza aspettare che l'app si risvegli.
+/// il countdown, i campi `next*` di spostare il banco sull'esercizio dopo —
+/// entrambi senza aspettare che l'app si risvegli.
 class LiveSessionSnapshot {
   const LiveSessionSnapshot({
     required this.logId,
@@ -59,6 +60,11 @@ class LiveSessionSnapshot {
     this.countdownStartsAt,
     this.countdownEndsAt,
     this.countdownLabel,
+    this.nextExerciseName,
+    this.nextEntryIndex = 0,
+    this.nextSetNumber = 0,
+    this.nextTotalSets = 0,
+    this.nextRestSecondsOnComplete = 0,
   });
 
   /// Sessione a cui appartiene: un'azione rimasta in coda da un allenamento
@@ -95,6 +101,24 @@ class LiveSessionSnapshot {
   /// timer EMOM/AMRAP/Tabata).
   final String? countdownLabel;
 
+  /// Esercizio su cui si sposta il banner quando le serie di questo finiscono,
+  /// `null` se non ne resta nessuno.
+  ///
+  /// È l'unico passo avanti che il nativo può fare da solo: senza, alla
+  /// conferma dell'ultima serie mostrerebbe una serie che non esiste ("4/3").
+  /// Il passo successivo lo ricalcola l'app al risveglio.
+  final String? nextExerciseName;
+
+  /// Coordinate della prima serie da spuntare di [nextExerciseName]: viaggiano
+  /// nell'azione messa in coda, quindi devono essere quelle vere e non un
+  /// "serie 1" dato per scontato.
+  final int nextEntryIndex;
+  final int nextSetNumber;
+  final int nextTotalSets;
+
+  /// Recupero da avviare confermando una serie di [nextExerciseName].
+  final int nextRestSecondsOnComplete;
+
   final LiveSessionLabels labels;
 
   Map<String, Object?> toMap() => {
@@ -108,6 +132,11 @@ class LiveSessionSnapshot {
     'countdownStartsAt': countdownStartsAt?.millisecondsSinceEpoch,
     'countdownEndsAt': countdownEndsAt?.millisecondsSinceEpoch,
     'countdownLabel': countdownLabel,
+    'nextExerciseName': nextExerciseName,
+    'nextEntryIndex': nextEntryIndex,
+    'nextSetNumber': nextSetNumber,
+    'nextTotalSets': nextTotalSets,
+    'nextRestSecondsOnComplete': nextRestSecondsOnComplete,
     ...labels.toMap(),
   };
 
@@ -124,6 +153,11 @@ class LiveSessionSnapshot {
       other.countdownStartsAt == countdownStartsAt &&
       other.countdownEndsAt == countdownEndsAt &&
       other.countdownLabel == countdownLabel &&
+      other.nextExerciseName == nextExerciseName &&
+      other.nextEntryIndex == nextEntryIndex &&
+      other.nextSetNumber == nextSetNumber &&
+      other.nextTotalSets == nextTotalSets &&
+      other.nextRestSecondsOnComplete == nextRestSecondsOnComplete &&
       other.labels == labels;
 
   @override
@@ -138,6 +172,11 @@ class LiveSessionSnapshot {
     countdownStartsAt,
     countdownEndsAt,
     countdownLabel,
+    nextExerciseName,
+    nextEntryIndex,
+    nextSetNumber,
+    nextTotalSets,
+    nextRestSecondsOnComplete,
     labels,
   );
 }

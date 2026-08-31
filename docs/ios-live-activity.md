@@ -10,7 +10,7 @@ The two platforms get there differently:
 | --- | --- | --- |
 | Surface | Live Activity (ActivityKit) + Dynamic Island | ongoing notification |
 | Countdown | `Text(timerInterval:)`, drawn by the system | `usesChronometer` + `chronometerCountDown` |
-| Button | App Intent running in the widget extension (iOS 17+) | notification action → broadcast |
+| Button | App Intent, run by iOS in the app's process even while it sleeps (iOS 17+) | notification action → broadcast |
 | Minimum version | iOS 16.2 for the banner, 17.0 for the button | Android 8.0 (`minSdk 26`) |
 | Extra setup | **yes** — a second Xcode target, see below | none |
 
@@ -20,16 +20,24 @@ no button, everything else unchanged.
 
 ## How a confirmation travels
 
-The tap does not reach the Dart engine. On iOS the App Intent runs in the
-*extension's* process; on Android the broadcast may arrive after the app's
-process has been killed. Neither can open ObjectBox. So both do the same
-thing:
+The tap does not reach the Dart engine. On iOS the App Intent runs with the
+app suspended and no Dart engine alive; on Android the broadcast may arrive
+after the app's process has been killed. Neither can open ObjectBox. So both
+do the same thing:
 
 1. write the action into a durable queue — App Group `UserDefaults` on iOS, a
    small JSON file on Android;
 2. update the surface optimistically, so the tap has a visible effect (iOS
    only: see the limitation below);
 3. schedule the rest-end notification, because the app is not awake to beep.
+
+The optimistic update is where the snapshot's `next*` fields earn their keep.
+The intent knows how to count the sets of the exercise on screen, but nothing
+else about the workout, so the app ships the following exercise along with the
+current one: confirming the last set moves the banner onto it instead of
+counting a set that does not exist ("4/3"). That is **one** step — after the
+sets of that exercise are gone too the button disappears until the app is
+reopened and recomputes the lookahead.
 
 When the app returns to the foreground, `WorkoutSessionBloc` drains the queue
 and applies each action **with the timestamp of the tap** — the rest timer
@@ -73,11 +81,32 @@ If Xcode ever refuses to open the project, the target can be recreated from
 its template: *File → New → Target… → Widget Extension*, name it
 `TaccaLiveActivity`, tick *Include Live Activity*, then delete the generated
 sources and drag in the files under `ios/TaccaLiveActivity/` (extension target
-only) and `ios/LiveSessionShared/` (**both** targets — the attributes and the
-queue are compiled into each process). Set the deployment target to 16.2 and
+only) and `ios/LiveSessionShared/` (**both** targets — the attributes, the
+queue and the intent are compiled into each process; see below for why the
+intent is not optional). Set the deployment target to 16.2 and
 the base configuration to `Flutter/LiveActivity.xcconfig`, which is what keeps
 the extension's version in step with the app's; Apple rejects a bundle whose
 extension version differs.
+
+### `CompleteSetIntent` belongs to both targets
+
+`ios/LiveSessionShared/CompleteSetIntent.swift` must be ticked for **Runner**
+as well as for **TaccaLiveActivity**. A `LiveActivityIntent` is run by iOS in
+the *app's* process (waking it in the background if needed); the extension
+compiles it only because that is the type `Button(intent:)` names. When the
+type is missing from the app binary the system does not fail loudly — it runs
+the intent out of process, in `WFIsolatedShortcutRunner`, where
+`Activity.activities` is empty, so `perform()` returns at its first `guard` and
+the button does nothing at all: no counter advancing, no countdown, nothing in
+the queue to drain.
+
+To check it from the command line, the app bundle — not just the appex — must
+carry the intent:
+
+```bash
+grep -c CompleteSetIntent \
+  build/ios/iphonesimulator/Runner.app/Metadata.appintents/extract.actionsdata
+```
 
 ## What to check on a device
 
@@ -93,6 +122,8 @@ Worth walking through by hand at least once:
       Dynamic Island.
 - [ ] Lock the phone, press **Serie fatta**: the set counter advances and the
       rest countdown starts, without opening the app.
+- [ ] Keep pressing to the end of the exercise: the banner moves to the next
+      exercise at set 1 — the counter must never read "4/3".
 - [ ] Wait for the countdown to end: the notification fires **once** (the app
       cancels the extension's reminder when it wakes up — a double beep here
       means that cancellation is not working).

@@ -9,8 +9,9 @@ import ActivityKit
 /// Ponte fra il Dart (`IosLiveSessionController`) e ActivityKit.
 ///
 /// L'app avvia e aggiorna la Live Activity; il **pulsante** invece non passa
-/// di qui: gira nell'estensione (`CompleteSetIntent`) e lascia l'azione nella
-/// coda dell'App Group, che questo ponte svuota con `drainPendingActions`.
+/// di qui: `CompleteSetIntent` viene eseguito da iOS anche ad app sospesa,
+/// senza motore Dart, e lascia l'azione nella coda dell'App Group, che questo
+/// ponte svuota con `drainPendingActions`.
 ///
 /// ActivityKit esiste da iOS 16.1 e l'API usata qui (`ActivityContent`) da
 /// 16.2: sotto, `isSupported` risponde `false` e la sessione funziona come
@@ -135,7 +136,12 @@ final class LiveSessionBridge {
       restSecondsOnComplete: payload["restSecondsOnComplete"] as? Int ?? 0,
       countdownStartsAt: LiveSessionBridge.date(payload["countdownStartsAt"]),
       countdownEndsAt: LiveSessionBridge.date(payload["countdownEndsAt"]),
-      countdownLabel: payload["countdownLabel"] as? String
+      countdownLabel: payload["countdownLabel"] as? String,
+      nextExerciseName: payload["nextExerciseName"] as? String,
+      nextEntryIndex: payload["nextEntryIndex"] as? Int ?? 0,
+      nextSetNumber: payload["nextSetNumber"] as? Int ?? 0,
+      nextTotalSets: payload["nextTotalSets"] as? Int ?? 0,
+      nextRestSecondsOnComplete: payload["nextRestSecondsOnComplete"] as? Int ?? 0
     )
   }
 

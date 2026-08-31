@@ -28,10 +28,10 @@ struct PendingLiveAction: Codable {
 
 /// Coda delle conferme date dalla schermata di blocco.
 ///
-/// L'App Intent gira nel processo dell'estensione, dove non esistono né il
-/// motore Dart né il database: l'unica cosa che può fare è lasciare qui
-/// l'azione. L'app la raccoglie al rientro in primo piano e la trasforma in
-/// una serie registrata, con l'orario del tap.
+/// L'App Intent gira sì nel processo dell'app, ma con l'app sospesa: non c'è
+/// nessun motore Dart vivo e quindi nessun database. L'unica cosa che può fare
+/// è lasciare qui l'azione. L'app la raccoglie al rientro in primo piano e la
+/// trasforma in una serie registrata, con l'orario del tap.
 enum PendingActionStore {
   private static var defaults: UserDefaults? {
     UserDefaults(suiteName: LiveSessionShared.appGroupId)

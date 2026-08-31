@@ -53,6 +53,24 @@ struct TaccaSessionAttributes: ActivityAttributes {
     var countdownStartsAt: Date?
     var countdownEndsAt: Date?
     var countdownLabel: String?
+
+    /// Esercizio su cui spostarsi quando le serie di questo finiscono, `nil`
+    /// se non ne resta nessuno.
+    ///
+    /// È l'unico passo avanti che l'intent può fare senza l'app: con le serie
+    /// esaurite e nessun esercizio dopo, il contatore resterebbe fermo su una
+    /// serie inesistente ("4/3"). Il passo successivo lo ricalcola l'app.
+    var nextExerciseName: String?
+
+    /// Coordinate della prima serie da spuntare di `nextExerciseName`: finiscono
+    /// nell'azione messa in coda, quindi sono quelle vere e non un "serie 1"
+    /// dato per scontato.
+    var nextEntryIndex: Int = 0
+    var nextSetNumber: Int = 0
+    var nextTotalSets: Int = 0
+
+    /// Recupero da avviare confermando una serie di `nextExerciseName`.
+    var nextRestSecondsOnComplete: Int = 0
   }
 
   /// Sessione a cui appartiene l'attività: un'azione rimasta in coda da un

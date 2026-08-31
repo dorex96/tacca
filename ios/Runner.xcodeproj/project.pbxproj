@@ -24,6 +24,7 @@
 		A11CE000000000000000001D /* TaccaSessionAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000014 /* TaccaSessionAttributes.swift */; };
 		A11CE000000000000000001E /* PendingActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000015 /* PendingActionStore.swift */; };
 		A11CE000000000000000001F /* LiveSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000016 /* LiveSessionBridge.swift */; };
+		A11CE0000000000000000022 /* CompleteSetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000011 /* CompleteSetIntent.swift */; };
 		A11CE0000000000000000020 /* TaccaLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000002 /* TaccaLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -220,6 +221,7 @@
 			children = (
 				A11CE0000000000000000014 /* TaccaSessionAttributes.swift */,
 				A11CE0000000000000000015 /* PendingActionStore.swift */,
+				A11CE0000000000000000011 /* CompleteSetIntent.swift */,
 			);
 			path = LiveSessionShared;
 			sourceTree = "<group>";
@@ -229,7 +231,6 @@
 			children = (
 				A11CE000000000000000000F /* TaccaLiveActivityBundle.swift */,
 				A11CE0000000000000000010 /* SessionLiveActivity.swift */,
-				A11CE0000000000000000011 /* CompleteSetIntent.swift */,
 				A11CE0000000000000000012 /* Info.plist */,
 				A11CE0000000000000000013 /* TaccaLiveActivity.entitlements */,
 			);
@@ -481,6 +482,7 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				A11CE000000000000000001F /* LiveSessionBridge.swift in Sources */,
+				A11CE0000000000000000022 /* CompleteSetIntent.swift in Sources */,
 				A11CE000000000000000001D /* TaccaSessionAttributes.swift in Sources */,
 				A11CE000000000000000001E /* PendingActionStore.swift in Sources */,
 			);

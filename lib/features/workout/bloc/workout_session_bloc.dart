@@ -522,6 +522,14 @@ class WorkoutSessionBloc
         ? restTimerSpec(focus.item)
         : null;
 
+    // L'esercizio dopo viaggia insieme a questo: alla conferma dell'ultima
+    // serie il nativo ci sposta sopra il banner da solo, invece di contare una
+    // serie che non esiste.
+    final next = focus == null ? null : _liveFocusAfter(focus.item);
+    final nextRest = (next != null && state.autoStartRest)
+        ? restTimerSpec(next.item)
+        : null;
+
     return LiveSessionSnapshot(
       logId: log.id,
       exerciseName: item.name,
@@ -533,6 +541,11 @@ class WorkoutSessionBloc
       countdownStartsAt: countdown.startsAt,
       countdownEndsAt: countdown.endsAt,
       countdownLabel: countdown.label,
+      nextExerciseName: next?.item.name,
+      nextEntryIndex: next?.item.index ?? 0,
+      nextSetNumber: next?.setNumber ?? 0,
+      nextTotalSets: next?.item.displayedSets ?? 0,
+      nextRestSecondsOnComplete: nextRest?.total.inSeconds ?? 0,
       labels: _liveLabels,
     );
   }
@@ -570,19 +583,38 @@ class WorkoutSessionBloc
   /// prosegue in sequenza, perché il pulsante della schermata di blocco deve
   /// spuntare qualcosa di sensato anche quando l'esercizio corrente è finito.
   ({SessionItem item, int setNumber})? _liveFocus() {
+    for (final pending in _livePendingSets()) {
+      return pending;
+    }
+    return null;
+  }
+
+  /// Prima serie da spuntare **dopo** [item]: è quella su cui il nativo si
+  /// sposta quando le serie di [item] finiscono. Le serie rimaste dello stesso
+  /// esercizio le conta da sé.
+  ({SessionItem item, int setNumber})? _liveFocusAfter(SessionItem item) {
+    for (final pending in _livePendingSets()) {
+      if (pending.item.index != item.index) return pending;
+    }
+    return null;
+  }
+
+  /// Serie ancora da spuntare, nell'ordine in cui si presentano all'utente:
+  /// dall'esercizio in evidenza in avanti, poi si ricomincia da capo per
+  /// raccogliere quelle saltate.
+  Iterable<({SessionItem item, int setNumber})> _livePendingSets() sync* {
     final all = state.items;
-    if (all.isEmpty) return null;
+    if (all.isEmpty) return;
     final start = state.currentIndex.clamp(0, all.length - 1);
     for (var offset = 0; offset < all.length; offset++) {
       final item = all[(start + offset) % all.length];
       final total = item.displayedSets;
       for (var setNumber = 1; setNumber <= total; setNumber++) {
         if (!item.isSetDone(setNumber)) {
-          return (item: item, setNumber: setNumber);
+          yield (item: item, setNumber: setNumber);
         }
       }
     }
-    return null;
   }
 
   // --- helper ---

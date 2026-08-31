@@ -5,8 +5,16 @@ import UserNotifications
 
 /// "Serie fatta" premuto sulla schermata di blocco.
 ///
-/// Gira nel processo dell'estensione, non in quello dell'app: qui non ci sono
-/// né il motore Dart né il database. Fa tre cose, in quest'ordine:
+/// **Il file appartiene a due target.** `LiveActivityIntent` viene eseguito da
+/// iOS nel processo dell'**app** (svegliata in background se serve): se il
+/// tipo non è compilato anche dentro `Runner`, il sistema non lo trova lì e lo
+/// esegue fuori processo (`WFIsolatedShortcutRunner`), dove
+/// `Activity.activities` è vuoto — il tap sembra non fare niente. L'estensione
+/// lo compila a sua volta perché è ciò che `Button(intent:)` referenzia.
+///
+/// Il processo è quello dell'app, ma non c'è nessun motore Dart vivo su cui
+/// contare: l'app può essere sospesa e questo `perform` gira comunque. Quindi
+/// niente Bloc, niente database — fa tre cose, in quest'ordine:
 ///
 /// 1. lascia l'azione nella coda dell'App Group — è l'unica che non può
 ///    fallire senza perdere il lavoro dell'utente;
@@ -48,10 +56,31 @@ struct CompleteSetIntent: LiveActivityIntent {
     )
 
     var next = state
-    next.setNumber = state.setNumber + 1
-    // Con le serie previste esaurite il pulsante sparisce: sarà l'app, al
-    // risveglio, a spostare il banner sull'esercizio successivo.
-    next.canCompleteSet = state.totalSets > 0 && next.setNumber <= state.totalSets
+    if state.totalSets > 0 && state.setNumber < state.totalSets {
+      // Restano serie di questo esercizio.
+      next.setNumber = state.setNumber + 1
+    } else if let nextExercise = state.nextExerciseName {
+      // Erano finite: si passa all'esercizio dopo, quello che l'app ha
+      // mandato insieme allo stato.
+      next.exerciseName = nextExercise
+      next.entryIndex = state.nextEntryIndex
+      next.setNumber = state.nextSetNumber
+      next.totalSets = state.nextTotalSets
+      next.restSecondsOnComplete = state.nextRestSecondsOnComplete
+      next.canCompleteSet = state.nextSetNumber > 0
+      // Un passo solo: quale sia l'esercizio ancora dopo lo sa solo l'app.
+      // Esaurite anche queste serie il pulsante sparisce fino alla
+      // riapertura — è l'unico momento in cui serve davvero riaprirla.
+      next.nextExerciseName = nil
+      next.nextEntryIndex = 0
+      next.nextSetNumber = 0
+      next.nextTotalSets = 0
+      next.nextRestSecondsOnComplete = 0
+    } else {
+      // Niente più da spuntare: il contatore resta sull'ultima serie fatta,
+      // senza pulsante. Non si inventa una serie in più.
+      next.canCompleteSet = false
+    }
 
     if state.restSecondsOnComplete > 0 {
       let endsAt = now.addingTimeInterval(TimeInterval(state.restSecondsOnComplete))

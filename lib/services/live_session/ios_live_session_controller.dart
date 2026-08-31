@@ -7,12 +7,13 @@ import 'live_session_controller.dart';
 
 /// Live Activity di ActivityKit (iOS 16.2+).
 ///
-/// Tutto il lavoro sta nell'estensione widget (`ios/TaccaLiveActivity`): qui
-/// c'è solo il ponte sul `MethodChannel`. Il pulsante della Live Activity gira
-/// nel processo dell'estensione, quindi non chiama questo canale: scrive
-/// l'azione nell'App Group e l'app la raccoglie con [drainPendingActions] al
-/// rientro in primo piano. [actions] copre il caso in cui l'app fosse ancora
-/// viva e il nativo abbia potuto consegnarla subito.
+/// Tutto il lavoro sta nel nativo (`ios/TaccaLiveActivity`, `ios/LiveSessionShared`):
+/// qui c'è solo il ponte sul `MethodChannel`. Il pulsante della Live Activity
+/// non chiama questo canale: il suo App Intent può girare con l'app sospesa e
+/// nessun motore Dart vivo, quindi scrive l'azione nell'App Group e l'app la
+/// raccoglie con [drainPendingActions] al rientro in primo piano. [actions]
+/// copre il caso in cui l'app fosse ancora viva e il nativo abbia potuto
+/// consegnarla subito.
 class IosLiveSessionController implements LiveSessionController {
   IosLiveSessionController({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel(channelName) {

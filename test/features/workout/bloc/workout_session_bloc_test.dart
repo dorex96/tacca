@@ -539,6 +539,57 @@ void main() {
       },
     );
 
+    test('insieme all\'esercizio corrente viaggia anche quello dopo', () async {
+      // Senza, alla conferma dell'ultima serie il nativo conterebbe "4/3":
+      // da solo non sa cosa viene dopo.
+      final bloc = await startedSession();
+
+      final snapshot = live.started.single;
+      expect(snapshot.nextExerciseName, 'Rematore');
+      expect(snapshot.nextEntryIndex, 1);
+      expect(snapshot.nextSetNumber, 1);
+      expect(snapshot.nextTotalSets, 3);
+      expect(snapshot.nextRestSecondsOnComplete, 0);
+
+      await bloc.close();
+    });
+
+    test('sull\'ultimo esercizio rimasto non c\'è nessun "dopo"', () async {
+      final bloc = await startedSession();
+
+      for (var setNumber = 1; setNumber <= 3; setNumber++) {
+        bloc.add(SetCompleted(entryIndex: 0, setNumber: setNumber));
+      }
+      await pumpEventQueue();
+
+      expect(live.last!.exerciseName, 'Rematore');
+      expect(live.last!.setNumber, 1);
+      // Il nativo nasconderà il pulsante invece di inventare una serie.
+      expect(live.last!.nextExerciseName, isNull);
+      expect(live.last!.nextSetNumber, 0);
+
+      await bloc.close();
+    });
+
+    test(
+      'del prossimo esercizio si manda la serie vera, non "la prima"',
+      () async {
+        final bloc = await startedSession();
+
+        // Rematore ha già la sua prima serie a registro (spuntata prima di
+        // tornare indietro): il nativo deve puntare alla seconda.
+        bloc.add(const SetCompleted(entryIndex: 1, setNumber: 1));
+        bloc.add(const ExerciseFocused(0));
+        await pumpEventQueue();
+
+        expect(live.last!.exerciseName, 'Panca piana');
+        expect(live.last!.nextExerciseName, 'Rematore');
+        expect(live.last!.nextSetNumber, 2);
+
+        await bloc.close();
+      },
+    );
+
     test('spuntata una serie, la superficie punta alla successiva', () async {
       final bloc = await startedSession();
 
