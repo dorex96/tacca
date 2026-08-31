@@ -101,6 +101,7 @@ Le regole che non si negoziano:
 - **non si pubblica a ogni tick**: il countdown lo disegna il sistema a partire da `countdownEndsAt`. Si pubblica su apertura, su ogni `_persist`, sul cambio di esercizio, all'avvio/arresto di un timer e una volta quando scade;
 - le etichette sono stringhe ARB passate nel payload (il nativo non legge gli ARB): arrivano dal router in `LiveSessionLabels`;
 - `NotificationHost` è il punto unico di `initialize` del plugin notifiche: `initialize` registra una sola coppia di callback, e i servizi che le usano sono due.
+- **su Android la coda non è il ripiego, è la consegna**: con `showsUserInterface: false` il plugin manda il tap a `ActionBroadcastReceiver` → isolate di background → coda, *anche ad app viva* (la callback in primo piano non lo vede mai). Due conseguenze: il receiver va dichiarato in `android/app/src/main/AndroidManifest.xml` — il plugin non lo dichiara da sé, e senza il `PendingIntent` non risolve nessun componente, quindi il pulsante non fa niente, senza crash né log — e la coda si drena sia all'apertura della sessione sia a ogni rientro in primo piano (a processo ucciso il Bloc nasce da zero e nessun cambio di lifecycle arriva).
 
 Il lato nativo non lo compila la CI (runner Linux) e non ha test: la checklist da device sta in `docs/ios-live-activity.md`, insieme al setup Xcode (App Group, firma) che va fatto una volta a mano.
 

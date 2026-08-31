@@ -143,6 +143,9 @@ class WorkoutSessionBloc
 
     await _prepareDevices();
     _publishLive(starting: true);
+    // Una coda rimasta da una sessione mai chiusa non deve sopravvivere a
+    // questa: si svuota subito, e il filtro sul logId la scarta.
+    await _drainLiveActions();
   }
 
   Future<void> _onSessionResumed(
@@ -176,6 +179,9 @@ class WorkoutSessionBloc
 
     await _prepareDevices();
     _publishLive(starting: true);
+    // Il processo può essere stato ucciso con una conferma già data dalla
+    // schermata di blocco: si applica adesso, con l'orario del tap.
+    await _drainLiveActions();
   }
 
   Future<void> _prepareDevices() async {
@@ -457,6 +463,17 @@ class WorkoutSessionBloc
 
     // Le conferme date dalla schermata di blocco sono rimaste in coda: si
     // applicano adesso, con l'orario in cui l'utente le ha date.
+    await _drainLiveActions();
+  }
+
+  /// Svuota la coda della superficie di sistema e applica quello che c'era.
+  ///
+  /// Su Android il tap sul pulsante della notifica passa *sempre* per
+  /// l'isolate di background, anche ad app viva: la coda non è il ripiego, è
+  /// la consegna. Perciò si drena sia all'apertura della sessione — il
+  /// processo può essere morto nel frattempo, e lì nessun cambio di lifecycle
+  /// arriva — sia a ogni rientro in primo piano.
+  Future<void> _drainLiveActions() async {
     for (final action in await _liveSession.drainPendingActions()) {
       add(LiveActionReceived(action));
     }

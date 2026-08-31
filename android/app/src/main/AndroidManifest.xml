@@ -49,6 +49,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Conferma della serie dal pulsante della notifica di sessione: con
+             showsUserInterface=false il plugin manda un broadcast esplicito a
+             questo receiver. Senza la dichiarazione il PendingIntent non risolve
+             nessun componente e il tap non fa assolutamente nulla. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

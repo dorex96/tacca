@@ -12,7 +12,7 @@ The two platforms get there differently:
 | Countdown | `Text(timerInterval:)`, drawn by the system | `usesChronometer` + `chronometerCountDown` |
 | Button | App Intent, run by iOS in the app's process even while it sleeps (iOS 17+) | notification action → broadcast |
 | Minimum version | iOS 16.2 for the banner, 17.0 for the button | Android 8.0 (`minSdk 26`) |
-| Extra setup | **yes** — a second Xcode target, see below | none |
+| Extra setup | **yes** — a second Xcode target, see below | one `<receiver>` line in `AndroidManifest.xml`, see below |
 
 Below 16.2 (or with Live Activities switched off in Settings) `isSupported`
 answers `false` and the session behaves exactly as it did before: no banner,
@@ -39,12 +39,36 @@ counting a set that does not exist ("4/3"). That is **one** step — after the
 sets of that exercise are gone too the button disappears until the app is
 reopened and recomputes the lookahead.
 
-When the app returns to the foreground, `WorkoutSessionBloc` drains the queue
-and applies each action **with the timestamp of the tap** — the rest timer
-starts from when the set actually ended, not from when the app woke up. An
-action whose `logId` belongs to another session is discarded, and every action
-carries an id so the same confirmation delivered twice (once live, once from
-the queue) is applied once.
+`WorkoutSessionBloc` drains the queue when a session opens **and** every time
+the app returns to the foreground, then applies each action **with the
+timestamp of the tap** — the rest timer starts from when the set actually
+ended, not from when the app woke up. Both moments are needed: after the
+process is killed the bloc is built from scratch and no lifecycle change ever
+arrives. An action whose `logId` belongs to another session is discarded, and
+every action carries an id so the same confirmation delivered twice (once
+live, once from the queue) is applied once.
+
+On Android the queue is not a fallback, it is *the* delivery path. An action
+with `showsUserInterface: false` is sent to `ActionBroadcastReceiver`, which
+spins up a background isolate and calls
+`onDidReceiveBackgroundNotificationResponse` — even when the app is alive and
+in the foreground. The plugin's foreground callback never sees it.
+
+### Android manifest
+
+`flutter_local_notifications` ships no receivers in its own manifest, so the
+app must declare the one that handles action buttons:
+
+```xml
+<receiver
+    android:exported="false"
+    android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+```
+
+Without it the action's `PendingIntent` resolves to no component at all: the
+button is drawn, it is tappable, and the tap goes nowhere — no crash, no log,
+nothing. It is already in `android/app/src/main/AndroidManifest.xml`; do not
+remove it when tidying the file.
 
 Known limitation, Android only: if the process was killed, the notification's
 text does not refresh until you reopen the app. Re-initialising the plugin

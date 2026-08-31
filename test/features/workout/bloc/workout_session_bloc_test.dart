@@ -682,6 +682,48 @@ void main() {
     );
 
     test(
+      'alla riapertura della sessione la coda del nativo viene drenata',
+      () async {
+        // Processo ucciso durante l'allenamento: la conferma è rimasta in
+        // coda e al rientro nessun cambio di lifecycle arriva mai, perché il
+        // Bloc nasce adesso.
+        final plan = plans.plans[1]!;
+        final day = plan.days.first;
+        final log = WorkoutLog.start(
+          startedAt: _now,
+          planNameSnapshot: plan.name,
+          dayLabelSnapshot: day.label,
+        );
+        log.plan.target = plan;
+        log.day.target = day;
+        log.entries.addAll([
+          LogEntry(exerciseNameSnapshot: 'Panca piana', sortOrder: 0),
+          LogEntry(exerciseNameSnapshot: 'Rematore', sortOrder: 1),
+        ]);
+        final logId = logs.saveLog(log);
+
+        final tap = _now.subtract(const Duration(seconds: 10));
+        live.pending = [
+          LiveSessionAction(
+            id: 'azione-1',
+            kind: LiveSessionActionKind.setCompleted,
+            logId: logId,
+            entryIndex: 0,
+            setNumber: 1,
+            at: tap,
+          ),
+        ];
+
+        final bloc = buildBloc()..add(SessionResumed(logId));
+        await pumpEventQueue();
+
+        expect(bloc.state.items.first.entry.sets.single.completedAt, tap);
+
+        await bloc.close();
+      },
+    );
+
+    test(
       'senza recupero del giro il nativo non avvia nessun countdown',
       () async {
         // Giorno a superset: il riposo è del giro, quindi nasce solo

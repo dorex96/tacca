@@ -55,6 +55,10 @@ class AndroidLiveSessionController implements LiveSessionController {
   StreamSubscription<NotificationResponse>? _responses;
   LiveSessionSnapshot? _shown;
 
+  /// Apertura della sessione: `null` fuori da una sessione, altrimenti l'esito
+  /// dell'inizializzazione. È anche il punto su cui [update] si sincronizza.
+  Future<bool>? _startup;
+
   @override
   Stream<LiveSessionAction> get actions => _actions.stream;
 
@@ -63,24 +67,40 @@ class AndroidLiveSessionController implements LiveSessionController {
 
   @override
   Future<void> start(LiveSessionSnapshot snapshot) async {
-    if (!await _host.ensureInitialized()) return;
-    _queue ??= PendingActionQueue(
-      File('${(await _supportDirectory()).path}/$kPendingActionsFileName'),
-    );
-    _responses ??= _host.responses.listen(_onResponse);
-    await _publish(snapshot);
+    await (_startup = _start(snapshot));
+  }
+
+  /// Non lancia mai: [_startup] viene atteso da [update], e la superficie di
+  /// sistema non deve poter far cadere la sessione.
+  Future<bool> _start(LiveSessionSnapshot snapshot) async {
+    try {
+      if (!await _host.ensureInitialized()) return false;
+      await _ensureQueue();
+      _responses ??= _host.responses.listen(_onResponse);
+      await _publish(snapshot);
+      return true;
+    } catch (error, stackTrace) {
+      reportNotificationError('notifica di sessione', error, stackTrace);
+      return false;
+    }
   }
 
   @override
   Future<void> update(LiveSessionSnapshot snapshot) async {
-    // Fuori da una sessione avviata non si pubblica nulla, e uno snapshot
-    // identico non merita un ridisegno.
-    if (_queue == null || snapshot == _shown) return;
+    final startup = _startup;
+    // Fuori da una sessione aperta non si pubblica nulla. Se l'apertura è
+    // ancora in volo la si aspetta invece di scavalcarla: succede quando la
+    // coda viene applicata subito dopo l'apertura della sessione, e un
+    // aggiornamento scartato lì lascerebbe il banner indietro di una serie.
+    if (startup == null || !await startup) return;
+    // Uno snapshot identico non merita un ridisegno.
+    if (snapshot == _shown) return;
     await _publish(snapshot);
   }
 
   @override
   Future<void> stop() async {
+    _startup = null;
     _shown = null;
     _queue?.clear();
     _queue = null;
@@ -92,8 +112,24 @@ class AndroidLiveSessionController implements LiveSessionController {
   }
 
   @override
-  Future<List<LiveSessionAction>> drainPendingActions() async =>
-      _queue?.drain() ?? const [];
+  Future<List<LiveSessionAction>> drainPendingActions() async {
+    // Il Bloc aspetta questa risposta per aprire la sessione: una directory
+    // di supporto irraggiungibile costa le conferme in coda, non l'apertura.
+    try {
+      return (await _ensureQueue()).drain();
+    } catch (error, stackTrace) {
+      reportNotificationError('coda della sessione', error, stackTrace);
+      return const [];
+    }
+  }
+
+  /// La coda è un file: si legge anche prima che la notifica esista. È
+  /// quello che serve quando il processo è stato ucciso — la conferma è già
+  /// in coda e nessuno ha ancora chiamato [start].
+  Future<PendingActionQueue> _ensureQueue() async =>
+      _queue ??= PendingActionQueue(
+        File('${(await _supportDirectory()).path}/$kPendingActionsFileName'),
+      );
 
   @override
   Future<void> dispose() async {
@@ -161,12 +197,16 @@ class AndroidLiveSessionController implements LiveSessionController {
     }
   }
 
+  /// Rete di sicurezza: in pratica non scatta. Con `showsUserInterface: false`
+  /// il plugin manda il tap a `ActionBroadcastReceiver` — dichiarato nel
+  /// manifest dell'app, senza non arriva da nessuna parte — e da lì a
+  /// [liveSessionActionBackground], anche ad app viva. La strada vera è
+  /// quindi sempre la coda, drenata all'apertura della sessione e al rientro
+  /// in primo piano.
   void _onResponse(NotificationResponse response) {
     if (response.actionId != kCompleteSetActionId) return;
     final payload = LiveActionPayload.tryParse(response.payload);
     if (payload == null || _actions.isClosed) return;
-    // Consegna diretta: quando la risposta arriva qui, l'isolate di background
-    // non è stato usato e la coda è rimasta vuota.
     _actions.add(payload.toAction(_now()));
   }
 }
