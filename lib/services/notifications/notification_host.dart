@@ -47,7 +47,10 @@ class NotificationHost {
 
       await plugin.initialize(
         settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          // Silhouette monocroma: in barra di stato Android appiattisce
+          // l'icona sul canale alfa, quindi ic_launcher (quadrato opaco a
+          // colori) diventerebbe un rettangolo bianco pieno.
+          android: AndroidInitializationSettings('@drawable/ic_notification'),
           iOS: DarwinInitializationSettings(
             // I permessi si chiedono all'avvio della prima sessione, non
             // all'apertura dell'app: il consenso arriva quando il motivo è

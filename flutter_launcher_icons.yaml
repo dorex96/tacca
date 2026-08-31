@@ -1,0 +1,36 @@
+# Genera le icone di lancio da 4 sorgenti 1024x1024 in assets/icons/.
+# Rigenerare dopo ogni modifica dei PNG:
+#   dart run flutter_launcher_icons
+#
+# I file in android/.../mipmap-* e ios/.../AppIcon.appiconset sono
+# generati da qui e versionati: non modificarli a mano.
+flutter_launcher_icons:
+  # iOS applica da se' la maschera squircle: l'immagine e' a pieno campo
+  # e senza angoli arrotondati. remove_alpha_ios appiattisce il canale
+  # alfa che Figma scrive comunque (App Store rifiuta le icone con alfa).
+  image_path: "assets/icons/icon_ios.png"
+  ios: true
+  remove_alpha_ios: true
+
+  # Android: adaptive icon (API 26+) piu' i PNG legacy generati da image_path.
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "#192126"
+  adaptive_icon_foreground: "assets/icons/icon_foreground.png"
+  # Icona a tema (Android 13+). Usa la sorgente di ic_notification e non
+  # icon_monochrome.png: quest'ultima e' disegnata alla scala di iOS, fuori
+  # dalla zona di sicurezza dell'adaptive icon, e verrebbe tagliata.
+  adaptive_icon_monochrome: "assets/icons/ic_notification.png"
+  # I PNG sorgente hanno gia' il margine della zona di sicurezza (il soggetto
+  # sta nel cerchio centrale da 626px su 1024). L'inset predefinito del 16%
+  # del tool lo sommerebbe una seconda volta, rimpicciolendo il disegno.
+  adaptive_icon_foreground_inset: 0
+
+# ATTENZIONE dopo ogni "dart run flutter_launcher_icons":
+# il pacchetto riscrive ogni riga del project.pbxproj che contiene
+# "ASSETCATALOG" (ios.dart:340), e cosi' rompe
+# ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES
+# nelle configurazioni dell'estensione TaccaLiveActivity. Ripristinare:
+#   git checkout -- ios/Runner.xcodeproj/project.pbxproj
+# ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon e' gia' corretto e non
+# va toccato.

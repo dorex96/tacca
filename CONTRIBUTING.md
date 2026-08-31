@@ -23,6 +23,14 @@ dart run build_runner watch     # regenerate while you work
 
 `*.g.dart` and `*.freezed.dart` are generated and git-ignored, so a fresh clone does not compile before the `build_runner` step. `lib/objectbox-model.json` is the exception: it **is** versioned. Commit it whenever you touch an entity, and never reuse or hand-edit its UIDs — that file is how ObjectBox knows a field was renamed rather than dropped and re-added.
 
+The launcher icons are generated, not hand-drawn per size. The four 1024×1024 sources live in `assets/icons/`; `flutter_launcher_icons.yaml` turns them into the iOS asset catalog, the Android mipmaps and the adaptive icon:
+
+```bash
+dart run flutter_launcher_icons
+```
+
+Afterwards check `git diff ios/Runner.xcodeproj/project.pbxproj` and revert it: the package rewrites every line containing `ASSETCATALOG`, which breaks a build setting of the Live Activity extension. The Android status-bar icon (`res/drawable-*/ic_notification.png`) is **not** produced by that command — it is a separate monochrome silhouette at 24dp.
+
 To run the repository tests locally you also need the ObjectBox native library on the host; without it they skip themselves:
 
 ```bash
