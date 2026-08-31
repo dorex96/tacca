@@ -10,12 +10,9 @@ Everything except the optional AI import works with no network connection, and a
 
 > **Language note.** The app UI, the source comments and the specification are in Italian (*"tacca"* is the tally mark you scratch down after a set). This README and the contributor docs are in English. There is currently one locale, `it`; the strings live in `lib/l10n/app_it.arb`, so adding another one is a translation, not a refactor.
 
-<!--
-Screenshots go here once there are some. Suggested layout:
-| Plans | Session | History |
+| Archivio schede | Dettaglio scheda | Sessione |
 |---|---|---|
-| <img src="docs/screenshots/plans.png" width="220"> | <img src="docs/screenshots/session.png" width="220"> | <img src="docs/screenshots/history.png" width="220"> |
--->
+| <img src="docs/screenshots/plans.png" width="220" alt="Archivio delle schede, con la scheda in uso in evidenza"> | <img src="docs/screenshots/plan-detail.png" width="220" alt="Dettaglio di una scheda con blocchi ed esercizi"> | <img src="docs/screenshots/session.png" width="220" alt="Sessione di allenamento con serie spuntate e recupero"> |
 
 ## Project status
 
