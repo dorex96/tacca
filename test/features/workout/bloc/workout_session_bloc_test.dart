@@ -8,6 +8,7 @@ import 'package:tacca/data/repositories/workout_log_repository.dart';
 import 'package:tacca/features/workout/bloc/workout_session_bloc.dart';
 import 'package:tacca/features/workout/bloc/workout_session_event.dart';
 import 'package:tacca/features/workout/bloc/workout_session_state.dart';
+import 'package:tacca/services/live_session/live_session_controller.dart';
 import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,6 +22,7 @@ void main() {
   late RecordingSessionFeedback feedback;
   late RecordingSessionNotifier notifier;
   late RecordingScreenWake screenWake;
+  late RecordingLiveSession live;
   late TimerEngine timerEngine;
 
   /// Scheda a un giorno: due esercizi in un blocco standard, il primo con
@@ -64,6 +66,8 @@ void main() {
     feedback: feedback,
     notifier: notifier,
     screenWake: screenWake,
+    liveSession: live,
+    liveLabels: kTestLiveLabels,
     now: () => _now,
   );
 
@@ -79,13 +83,32 @@ void main() {
     feedback = RecordingSessionFeedback();
     notifier = RecordingSessionNotifier();
     screenWake = RecordingScreenWake();
+    live = RecordingLiveSession();
     timerEngine = TimerEngine(now: () => _now);
   });
 
   tearDown(() async {
     await timerEngine.dispose();
     await logs.dispose();
+    await live.dispose();
   });
+
+  /// Conferma come la manda il nativo: id già assegnato e orario del tap.
+  LiveSessionAction setConfirmed(
+    WorkoutSessionBloc bloc, {
+    required DateTime at,
+    String id = 'azione-1',
+    int entryIndex = 0,
+    int setNumber = 1,
+    int? logId,
+  }) => LiveSessionAction(
+    id: id,
+    kind: LiveSessionActionKind.setCompleted,
+    logId: logId ?? bloc.state.log!.id,
+    entryIndex: entryIndex,
+    setNumber: setNumber,
+    at: at,
+  );
 
   group('apertura della sessione', () {
     test('SessionStarted crea il log e tiene lo schermo acceso', () async {
@@ -494,6 +517,166 @@ void main() {
 
       expect(timerEngine.isRunning, isFalse);
       expect(screenWake.enabled, isFalse);
+    });
+  });
+
+  group('schermata di blocco (RF-06)', () {
+    test(
+      'la sessione aperta finisce subito sulla superficie di sistema',
+      () async {
+        final bloc = await startedSession();
+
+        final snapshot = live.started.single;
+        expect(snapshot.exerciseName, 'Panca piana');
+        expect(snapshot.setNumber, 1);
+        expect(snapshot.totalSets, 3);
+        expect(snapshot.canCompleteSet, isTrue);
+        // Il countdown lo fa partire il nativo da solo: deve sapere quanto dura.
+        expect(snapshot.restSecondsOnComplete, 120);
+        expect(snapshot.labels, kTestLiveLabels);
+
+        await bloc.close();
+      },
+    );
+
+    test('spuntata una serie, la superficie punta alla successiva', () async {
+      final bloc = await startedSession();
+
+      bloc.add(const SetCompleted(entryIndex: 0, setNumber: 1));
+      await pumpEventQueue();
+
+      expect(live.last!.setNumber, 2);
+      expect(live.last!.countdownEndsAt, _now.add(const Duration(minutes: 2)));
+      expect(live.last!.countdownLabel, 'Recupero');
+
+      await bloc.close();
+    });
+
+    test(
+      'la conferma dal blocco registra la serie con l\'orario del tap',
+      () async {
+        final bloc = await startedSession();
+        final tap = _now.subtract(const Duration(seconds: 30));
+
+        live.deliver(setConfirmed(bloc, at: tap));
+        await pumpEventQueue();
+
+        final sets = bloc.state.items.first.entry.sets;
+        expect(sets, hasLength(1));
+        expect(sets.first.completedAt, tap);
+        // Il recupero nasce da quando la serie è finita: ne restano 90 secondi,
+        // non 120, anche se l'app si è svegliata solo adesso.
+        expect(timerEngine.current!.startedAt, tap);
+        expect(timerEngine.current!.remaining, const Duration(seconds: 90));
+
+        await bloc.close();
+      },
+    );
+
+    test('la stessa conferma consegnata due volte vale una', () async {
+      final bloc = await startedSession();
+      final tap = _now.subtract(const Duration(seconds: 5));
+
+      live.deliver(setConfirmed(bloc, at: tap));
+      live.deliver(setConfirmed(bloc, at: tap));
+      await pumpEventQueue();
+
+      expect(bloc.state.items.first.entry.sets, hasLength(1));
+
+      await bloc.close();
+    });
+
+    test('una conferma di un\'altra sessione viene scartata', () async {
+      final bloc = await startedSession();
+
+      live.deliver(setConfirmed(bloc, at: _now, logId: 999));
+      await pumpEventQueue();
+
+      expect(bloc.state.items.first.entry.sets, isEmpty);
+
+      await bloc.close();
+    });
+
+    test(
+      'un recupero già scaduto non fa partire un timer nato morto',
+      () async {
+        final bloc = await startedSession();
+
+        live.deliver(
+          setConfirmed(bloc, at: _now.subtract(const Duration(minutes: 5))),
+        );
+        await pumpEventQueue();
+
+        expect(bloc.state.items.first.entry.sets, hasLength(1));
+        expect(timerEngine.current, isNull);
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      'al rientro in primo piano la coda del nativo viene drenata',
+      () async {
+        final bloc = await startedSession();
+        final tap = _now.subtract(const Duration(seconds: 10));
+        live.pending = [setConfirmed(bloc, at: tap)];
+
+        bloc.add(const AppLifecycleChanged(toBackground: false));
+        await pumpEventQueue();
+
+        expect(bloc.state.items.first.entry.sets.single.completedAt, tap);
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      'senza recupero del giro il nativo non avvia nessun countdown',
+      () async {
+        // Giorno a superset: il riposo è del giro, quindi nasce solo
+        // dall'ultimo esercizio del blocco.
+        final bloc = await startedSession(dayId: 11);
+
+        expect(live.started.single.restSecondsOnComplete, 0);
+
+        bloc.add(const ExerciseFocused(1));
+        await pumpEventQueue();
+
+        expect(live.last!.exerciseName, 'French press');
+        expect(live.last!.restSecondsOnComplete, 60);
+
+        await bloc.close();
+      },
+    );
+
+    test('a recupero scaduto la superficie dice che è finito', () async {
+      final bloc = await startedSession();
+
+      // Timer nato già scaduto: è la forma in cui si vede la transizione
+      // senza dover far scorrere l'orologio del test.
+      bloc.add(
+        TimerRequested(
+          TimerSpec.rest(const Duration(minutes: 2)),
+          startedAt: _now.subtract(const Duration(minutes: 5)),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(live.last!.countdownEndsAt, isNull);
+      expect(live.last!.countdownLabel, 'Recupero finito');
+
+      await bloc.close();
+    });
+
+    test('chiudendo la sessione la superficie si spegne', () async {
+      final bloc = await startedSession();
+
+      bloc.add(const SessionFinished(status: WorkoutStatus.completed));
+      await pumpEventQueue();
+
+      expect(live.stopCount, greaterThan(0));
+
+      await bloc.close();
     });
   });
 }

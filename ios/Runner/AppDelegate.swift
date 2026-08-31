@@ -3,6 +3,10 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  /// Ponte della Live Activity: tenuto vivo dall'AppDelegate perché il canale
+  /// deve rispondere per tutta la vita dell'app.
+  private var liveSession: LiveSessionBridge?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -13,6 +17,11 @@ import UIKit
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     }
     GeneratedPluginRegistrant.register(with: self)
+
+    if let controller = window?.rootViewController as? FlutterViewController {
+      liveSession = LiveSessionBridge(messenger: controller.binaryMessenger)
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

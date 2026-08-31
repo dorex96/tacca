@@ -7,7 +7,6 @@ import '../core/design/linear_icons.dart';
 import '../core/widgets/app_scaffold.dart';
 import '../core/widgets/confirm_dialog.dart';
 import '../core/widgets/home_tab_bar.dart';
-import '../data/entities/workout_log.dart';
 import '../data/repositories/plan_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/workout_log_repository.dart';
@@ -30,7 +29,8 @@ import '../features/settings/pages/ai_settings_page.dart';
 import '../features/settings/pages/settings_page.dart';
 import '../features/workout/bloc/workout_session_bloc.dart';
 import '../features/workout/bloc/workout_session_event.dart';
-import '../features/workout/cubit/resume_session_cubit.dart';
+import '../features/workout/cubit/active_session_cubit.dart';
+import '../features/workout/cubit/active_session_state.dart';
 import '../features/workout/pages/workout_session_page.dart';
 import '../l10n/app_localizations.dart';
 import '../services/ai/ai_provider.dart';
@@ -40,6 +40,7 @@ import '../services/feedback/session_feedback.dart';
 import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
 import '../services/images/plan_image_store.dart';
+import '../services/live_session/live_session_controller.dart';
 import '../services/notifications/session_notifier.dart';
 import '../services/timer/timer_engine.dart';
 import '../services/wakelock/screen_wake.dart';
@@ -187,9 +188,10 @@ GoRouter createRouter() {
         builder: (context, state) {
           final planId = int.parse(state.uri.queryParameters['planId']!);
           final dayId = int.parse(state.uri.queryParameters['dayId']!);
+          final liveLabels = _liveSessionLabels(context);
           return BlocProvider(
             create: (context) =>
-                _createSessionBloc(context)
+                _createSessionBloc(context, liveLabels)
                   ..add(SessionStarted(planId: planId, dayId: dayId)),
             child: const WorkoutSessionPage(),
           );
@@ -199,9 +201,11 @@ GoRouter createRouter() {
         path: '/workout/:logId',
         builder: (context, state) {
           final logId = int.parse(state.pathParameters['logId']!);
+          final liveLabels = _liveSessionLabels(context);
           return BlocProvider(
             create: (context) =>
-                _createSessionBloc(context)..add(SessionResumed(logId)),
+                _createSessionBloc(context, liveLabels)
+                  ..add(SessionResumed(logId)),
             child: const WorkoutSessionPage(),
           );
         },
@@ -220,7 +224,26 @@ GoRouter createRouter() {
   );
 }
 
-WorkoutSessionBloc _createSessionBloc(BuildContext context) {
+// Le etichette della schermata di blocco le disegna il sistema operativo, che
+// gli ARB non può leggerli: si risolvono qui, in fase di build del route (dove
+// dipendere da `Localizations` è lecito), e viaggiano nel payload verso il
+// nativo. Risolverle invece dentro il `create:` del `BlocProvider` registra una
+// dipendenza da un InheritedWidget in un lifecycle che non verrà più richiamato.
+LiveSessionLabels _liveSessionLabels(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return LiveSessionLabels(
+    title: l10n.workoutLiveTitle,
+    setsLabel: l10n.workoutLiveSets,
+    completeAction: l10n.workoutLiveCompleteSet,
+    restLabel: l10n.workoutTimerRest,
+    restDoneLabel: l10n.workoutLiveRestDone,
+  );
+}
+
+WorkoutSessionBloc _createSessionBloc(
+  BuildContext context,
+  LiveSessionLabels liveLabels,
+) {
   return WorkoutSessionBloc(
     planRepository: context.read<PlanRepository>(),
     logRepository: context.read<WorkoutLogRepository>(),
@@ -228,6 +251,8 @@ WorkoutSessionBloc _createSessionBloc(BuildContext context) {
     feedback: context.read<SessionFeedback>(),
     notifier: context.read<SessionNotifier>(),
     screenWake: context.read<ScreenWake>(),
+    liveSession: context.read<LiveSessionController>(),
+    liveLabels: liveLabels,
   );
 }
 
@@ -235,8 +260,10 @@ WorkoutSessionBloc _createSessionBloc(BuildContext context) {
 /// rami e sopra ci galleggia la tab bar del restyling (toccare una
 /// destinazione cambia ramo, ri-tap = pop allo stack root).
 ///
-/// È anche il punto in cui, dopo il primo frame, si verifica se esiste una
-/// sessione rimasta aperta da riprendere (§8).
+/// È anche il punto in cui si propone di riprendere la sessione trovata
+/// aperta all'avvio (§8). Solo *quella*: la sessione aperta durante l'uso
+/// dell'app si ritrova dalla card in cima all'archivio, senza che un dialog
+/// la rincorra ogni volta che si torna indietro.
 class _HomeShell extends StatefulWidget {
   const _HomeShell({required this.navigationShell});
 
@@ -250,9 +277,11 @@ class _HomeShellState extends State<_HomeShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ResumeSessionCubit>().check();
-    });
+    // La proposta può essere già pronta quando la shell viene montata: il
+    // gate legale sta sopra al router e le schermate nascono solo dopo
+    // l'accettazione, cioè molto dopo la prima lettura del database. Si
+    // guarda quindi lo stato appena montati, oltre ad ascoltarne i cambi.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeProposeResume());
   }
 
   void _onDestinationSelected(int index) {
@@ -273,10 +302,10 @@ class _HomeShellState extends State<_HomeShell> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          BlocListener<ResumeSessionCubit, WorkoutLog?>(
+          BlocListener<ActiveSessionCubit, ActiveSessionState>(
             listenWhen: (previous, current) =>
-                previous == null && current != null,
-            listener: (context, log) => _askToResume(context, l10n, log!),
+                !previous.promptPending && current.promptPending,
+            listener: (context, state) => _maybeProposeResume(),
             child: widget.navigationShell,
           ),
           Positioned(
@@ -300,12 +329,20 @@ class _HomeShellState extends State<_HomeShell> {
     );
   }
 
-  Future<void> _askToResume(
-    BuildContext context,
-    AppLocalizations l10n,
-    WorkoutLog log,
-  ) async {
-    final cubit = context.read<ResumeSessionCubit>();
+  /// Propone di riprendere la sessione trovata aperta all'avvio, se c'è e se
+  /// non è già stata proposta.
+  Future<void> _maybeProposeResume() async {
+    if (!mounted) return;
+    final cubit = context.read<ActiveSessionCubit>();
+    final log = cubit.state.log;
+    if (!cubit.state.promptPending || log == null) return;
+
+    // Si spegne *prima* di aprire il dialog: la proposta è una sola, e le due
+    // strade che arrivano qui (montaggio e cambio di stato) non devono
+    // sovrapporsi.
+    cubit.dismissPrompt();
+
+    final l10n = AppLocalizations.of(context);
     final resume = await showConfirmDialog(
       context,
       title: l10n.workoutResumeTitle,
@@ -318,8 +355,9 @@ class _HomeShellState extends State<_HomeShell> {
       cancelLabel: l10n.workoutResumeDismiss,
     );
 
-    cubit.dismiss();
-    if (resume && context.mounted) {
+    // "Più tardi" non chiude niente: la sessione resta aperta e resta a
+    // portata di mano nella card in cima all'archivio.
+    if (resume && mounted) {
       context.push('/workout/${log.id}');
     }
   }

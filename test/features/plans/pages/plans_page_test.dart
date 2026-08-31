@@ -2,14 +2,19 @@ import 'dart:async';
 
 import 'package:tacca/data/entities/workout_plan.dart';
 import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/data/entities/workout_log.dart';
 import 'package:tacca/features/plans/cubit/plans_cubit.dart';
 import 'package:tacca/features/plans/pages/plans_page.dart';
+import 'package:tacca/features/workout/cubit/active_session_cubit.dart';
 import 'package:tacca/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:mocktail/mocktail.dart';
+
+import '../../../support/fakes.dart';
 
 class _MockPlanRepository extends Mock implements PlanRepository {}
 
@@ -30,12 +35,18 @@ WorkoutPlan _plan(
 }
 
 void main() {
+  // La card della sessione in corso mostra l'ora di inizio, che passa da
+  // DateFormat: senza simboli caricati non si formatta.
+  setUpAll(() => initializeDateFormatting('it'));
+
   late _MockPlanRepository repository;
+  late FakeWorkoutLogRepository logs;
   late StreamController<List<WorkoutPlan>> activeController;
   late StreamController<List<WorkoutPlan>> archivedController;
 
   setUp(() {
     repository = _MockPlanRepository();
+    logs = FakeWorkoutLogRepository();
     activeController = StreamController<List<WorkoutPlan>>.broadcast();
     archivedController = StreamController<List<WorkoutPlan>>.broadcast();
     when(
@@ -53,6 +64,7 @@ void main() {
   tearDown(() async {
     await activeController.close();
     await archivedController.close();
+    await logs.dispose();
   });
 
   Future<void> pumpPlansPage(
@@ -61,35 +73,44 @@ void main() {
     List<WorkoutPlan> archived = const [],
   }) async {
     await tester.pumpWidget(
-      MaterialApp.router(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: GoRouter(
-          initialLocation: '/',
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => BlocProvider(
-                create: (context) => PlansCubit(repository: repository),
-                child: const PlansPage(),
+      BlocProvider<ActiveSessionCubit>(
+        create: (context) => ActiveSessionCubit(repository: logs),
+        child: MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: GoRouter(
+            initialLocation: '/',
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => BlocProvider(
+                  create: (context) => PlansCubit(repository: repository),
+                  child: const PlansPage(),
+                ),
               ),
-            ),
-            GoRoute(
-              path: '/plans/new',
-              builder: (context, state) =>
-                  const Scaffold(body: Text('NUOVA SCHEDA')),
-            ),
-            GoRoute(
-              path: '/plans/new/import',
-              builder: (context, state) =>
-                  const Scaffold(body: Text('IMPORT AI')),
-            ),
-            GoRoute(
-              path: '/plans/new/import/paste',
-              builder: (context, state) =>
-                  const Scaffold(body: Text('IMPORT CHAT')),
-            ),
-          ],
+              GoRoute(
+                path: '/plans/new',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('NUOVA SCHEDA')),
+              ),
+              GoRoute(
+                path: '/plans/new/import',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('IMPORT AI')),
+              ),
+              GoRoute(
+                path: '/plans/new/import/paste',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('IMPORT CHAT')),
+              ),
+              GoRoute(
+                path: '/workout/:logId',
+                builder: (context, state) => Scaffold(
+                  body: Text('SESSIONE ${state.pathParameters['logId']}'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -184,6 +205,34 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => repository.duplicatePlan(1)).called(1);
+  });
+
+  testWidgets('la sessione in corso apre l\'allenamento dalla card in cima', (
+    tester,
+  ) async {
+    logs.saveLog(
+      WorkoutLog.start(
+        startedAt: DateTime(2026, 8, 15, 18, 30),
+        planNameSnapshot: 'Push Pull Legs',
+        dayLabelSnapshot: 'Giorno A',
+      ),
+    );
+
+    await pumpPlansPage(tester, active: [_plan(1, 'Push Pull Legs')]);
+
+    expect(find.text('Allenamento in corso'), findsOneWidget);
+    expect(find.text('Iniziato alle 18:30'), findsOneWidget);
+
+    await tester.tap(find.text('Allenamento in corso'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SESSIONE 1'), findsOneWidget);
+  });
+
+  testWidgets('senza sessioni aperte la card non compare', (tester) async {
+    await pumpPlansPage(tester, active: [_plan(1, 'Push Pull Legs')]);
+
+    expect(find.text('Allenamento in corso'), findsNothing);
   });
 
   testWidgets('archivia una scheda dal menu azioni', (tester) async {

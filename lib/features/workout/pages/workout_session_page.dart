@@ -40,10 +40,23 @@ class WorkoutSessionPage extends StatefulWidget {
 
 class _WorkoutSessionPageState extends State<WorkoutSessionPage>
     with WidgetsBindingObserver {
+  // `didChangeAppLifecycleState` può scattare mentre l'elemento è già
+  // disattivato (uscita dalla sessione + passaggio in background nello stesso
+  // frame): lì un lookup che *ascolta* un InheritedWidget — come
+  // `AppLocalizations.of` — lancia. Le stringhe si catturano quando il context
+  // è ancora valido e si riusano nel callback di lifecycle.
+  late AppLocalizations _l10n;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _l10n = AppLocalizations.of(context);
   }
 
   @override
@@ -55,13 +68,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context);
     final toBackground = state != AppLifecycleState.resumed;
     context.read<WorkoutSessionBloc>().add(
       AppLifecycleChanged(
         toBackground: toBackground,
-        notificationTitle: l10n.workoutNotificationTitle,
-        notificationBody: l10n.workoutNotificationBody,
+        notificationTitle: _l10n.workoutNotificationTitle,
+        notificationBody: _l10n.workoutNotificationBody,
       ),
     );
   }

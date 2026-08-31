@@ -245,6 +245,10 @@ abstract final class AppTheme {
         textStyle: AppTypography.row,
       ),
 
+      // Il margine in basso è quello del dock più alto (pillola + tab bar
+      // flottante), non 24 fissi: l'overlay dello snackbar è unico per tutta
+      // l'app e non sa quale pagina lo mostra, quindi deve restare sopra la
+      // pillola più bassa che esiste piuttosto che finirci sopra.
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.ink,
@@ -252,7 +256,12 @@ abstract final class AppTheme {
           color: AppColors.surface,
         ),
         actionTextColor: AppColors.lime,
-        insetPadding: const EdgeInsets.all(AppSpacing.xl),
+        insetPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.dockClearance,
+        ),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),

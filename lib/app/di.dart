@@ -8,7 +8,7 @@ import '../data/repositories/workout_log_repository.dart';
 import '../features/history/cubit/history_cubit.dart';
 import '../features/legal/cubit/legal_notice_cubit.dart';
 import '../features/plans/cubit/plans_cubit.dart';
-import '../features/workout/cubit/resume_session_cubit.dart';
+import '../features/workout/cubit/active_session_cubit.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_selection.dart';
 import '../services/ai/model_catalog.dart';
@@ -22,6 +22,10 @@ import '../services/images/image_input.dart';
 import '../services/images/ocr_service.dart';
 import '../services/images/plan_image_store.dart';
 import '../services/links/link_opener.dart';
+import '../services/live_session/android_live_session_controller.dart';
+import '../services/live_session/live_session_controller.dart';
+import '../services/live_session/live_session_factory.dart';
+import '../services/notifications/notification_host.dart';
 import '../services/notifications/session_notifier.dart';
 import '../services/timer/timer_engine.dart';
 import '../services/wakelock/screen_wake.dart';
@@ -39,9 +43,10 @@ import '../services/wakelock/screen_wake.dart';
 /// `HistoryDetailCubit` e `WorkoutSessionBloc` restano invece scoped alla
 /// singola route.
 ///
-/// I servizi della sessione ([TimerEngine], feedback, notifiche, wake lock)
-/// sono singoli per tutta l'app: possiedono risorse di piattaforma (player
-/// audio, canale notifiche) e una sola sessione può essere attiva per volta.
+/// I servizi della sessione ([TimerEngine], feedback, notifiche, wake lock,
+/// superficie di sistema) sono singoli per tutta l'app: possiedono risorse di
+/// piattaforma (player audio, canale notifiche, Live Activity) e una sola
+/// sessione può essere attiva per volta.
 ///
 /// [LegalNoticeCubit] vive qui perché il gate legale è sopra al router: la
 /// manleva del primo avvio deve poter decidere prima di ogni schermata.
@@ -76,8 +81,21 @@ class AppProviders extends StatelessWidget {
         RepositoryProvider<SessionFeedback>(
           create: (context) => PluginSessionFeedback(),
         ),
+        // Un solo host per il plugin delle notifiche: `initialize` registra
+        // una sola coppia di callback e i servizi che le usano sono due.
+        RepositoryProvider<NotificationHost>(
+          create: (context) => NotificationHost(
+            onBackgroundResponse: liveSessionActionBackground,
+          ),
+        ),
         RepositoryProvider<SessionNotifier>(
-          create: (context) => LocalSessionNotifier(),
+          create: (context) =>
+              LocalSessionNotifier(host: context.read<NotificationHost>()),
+        ),
+        RepositoryProvider<LiveSessionController>(
+          create: (context) => createLiveSessionController(
+            host: context.read<NotificationHost>(),
+          ),
         ),
         RepositoryProvider<ScreenWake>(
           create: (context) => const PluginScreenWake(),
@@ -132,8 +150,12 @@ class AppProviders extends StatelessWidget {
             create: (context) =>
                 HistoryCubit(repository: context.read<WorkoutLogRepository>()),
           ),
-          BlocProvider<ResumeSessionCubit>(
-            create: (context) => ResumeSessionCubit(
+          // La sessione aperta si segue per tutta la vita dell'app, non si
+          // legge una volta all'avvio: la card di ripresa nell'archivio e il
+          // "una sola per volta" devono essere veri anche dopo che l'utente
+          // è uscito da un allenamento senza chiuderlo.
+          BlocProvider<ActiveSessionCubit>(
+            create: (context) => ActiveSessionCubit(
               repository: context.read<WorkoutLogRepository>(),
             ),
           ),

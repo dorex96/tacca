@@ -1,4 +1,5 @@
 import '../../../data/entities/workout_log.dart';
+import '../../../services/live_session/live_session_controller.dart';
 import '../../../services/timer/timer_engine.dart';
 
 /// Eventi della sessione di allenamento (§5.1).
@@ -65,14 +66,28 @@ final class ExerciseFocused extends WorkoutSessionEvent {
   final int index;
 }
 
+/// Conferma arrivata dalla superficie di sistema (Live Activity su iOS,
+/// notifica persistente su Android): la serie è stata spuntata a telefono
+/// bloccato, senza aprire l'app.
+final class LiveActionReceived extends WorkoutSessionEvent {
+  const LiveActionReceived(this.action);
+
+  final LiveSessionAction action;
+}
+
 /// Richiesta di avvio di un timer. Con un timer già in corso la richiesta
 /// viene messa in attesa di conferma (analisi funzionale §9), a meno di
 /// [force].
 final class TimerRequested extends WorkoutSessionEvent {
-  const TimerRequested(this.spec, {this.force = false});
+  const TimerRequested(this.spec, {this.force = false, this.startedAt});
 
   final TimerSpec spec;
   final bool force;
+
+  /// Istante di partenza del timer, quando non è "adesso": una serie
+  /// confermata dalla schermata di blocco fa partire il recupero da quel tap,
+  /// non da quando l'app si risveglia.
+  final DateTime? startedAt;
 }
 
 /// L'utente ha rinunciato a sostituire il timer in corso.

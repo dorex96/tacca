@@ -96,6 +96,8 @@ void main() {
                   feedback: RecordingSessionFeedback(),
                   notifier: RecordingSessionNotifier(),
                   screenWake: RecordingScreenWake(),
+                  liveSession: RecordingLiveSession(),
+                  liveLabels: kTestLiveLabels,
                   now: () => _now,
                 )..add(SessionStarted(planId: 1, dayId: dayId)),
                 child: const WorkoutSessionPage(),
@@ -237,6 +239,64 @@ void main() {
     final log = logs.logs.values.single;
     expect(log.notes, 'Buona sessione');
   });
+
+  testWidgets(
+    'in background la pagina programma la notifica con le stringhe tradotte',
+    (tester) async {
+      late RecordingSessionNotifier notifier;
+      tester.view.physicalSize = const Size(1200, 4800);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: GoRouter(
+            initialLocation: '/',
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => BlocProvider(
+                  create: (context) => WorkoutSessionBloc(
+                    planRepository: plans,
+                    logRepository: logs,
+                    timerEngine: timerEngine,
+                    feedback: RecordingSessionFeedback(),
+                    notifier: notifier = RecordingSessionNotifier(),
+                    screenWake: RecordingScreenWake(),
+                    liveSession: RecordingLiveSession(),
+                    liveLabels: kTestLiveLabels,
+                    now: () => _now,
+                  )..add(SessionStarted(planId: 1, dayId: 10)),
+                  child: const WorkoutSessionPage(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Un recupero in corso: è ciò che, andando in background, va tradotto in
+      // notifica locale al posto del beep.
+      await tester.tap(find.byKey(const ValueKey('set-toggle-Serie 1')).first);
+      await tester.pumpAndSettle();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pumpAndSettle();
+
+      // Nessuna eccezione (il callback di lifecycle non fa lookup che ascoltano
+      // un InheritedWidget) e le stringhe arrivano tradotte dagli ARB.
+      expect(tester.takeException(), isNull);
+      expect(notifier.scheduledText, isNotEmpty);
+      expect(notifier.scheduledText.last.title, 'Timer allenamento');
+      expect(
+        notifier.scheduledText.last.body,
+        'È scattato un segnale del timer.',
+      );
+    },
+  );
 
   testWidgets('uscire dalla sessione chiede conferma e la lascia aperta', (
     tester,

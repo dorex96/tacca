@@ -23,6 +23,8 @@ import '../../../data/entities/exercise.dart';
 import '../../../data/entities/workout_day.dart';
 import '../../../data/entities/workout_plan.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../workout/cubit/active_session_cubit.dart';
+import '../../workout/widgets/active_session_sheet.dart';
 import '../../workout/widgets/day_picker_sheet.dart';
 import '../cubit/plans_cubit.dart';
 import '../cubit/plans_state.dart';
@@ -199,7 +201,23 @@ class PlanDetailPage extends StatelessWidget {
 
   /// Avvia la sessione (RF-06). La scelta del giorno compare solo sulle schede
   /// multi-giorno: quella a giorno singolo ne ha uno implicito (§5.1).
+  ///
+  /// Un allenamento per volta: se ce n'è già uno aperto si decide prima cosa
+  /// farne, e lo si decide **qui**, prima di scegliere il giorno — non ha
+  /// senso far scegliere un giorno per una sessione che potrebbe non
+  /// nascere. A chiudere quello vecchio è poi `startSession`, cioè solo se e
+  /// quando la nuova parte: rinunciare da questo pannello non tocca niente.
   Future<void> _startWorkout(BuildContext context, WorkoutPlan plan) async {
+    final active = context.read<ActiveSessionCubit>().currentSession();
+    if (active != null) {
+      final choice = await showActiveSessionSheet(context, active: active);
+      if (choice == null || !context.mounted) return;
+      if (choice == ActiveSessionChoice.resume) {
+        context.push('/workout/${active.id}');
+        return;
+      }
+    }
+
     final days = plan.days.toList();
     var dayId = days.first.id;
     if (days.length > 1) {

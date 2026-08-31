@@ -15,6 +15,7 @@ import 'package:tacca/services/images/image_input.dart';
 import 'package:tacca/services/images/ocr_service.dart';
 import 'package:tacca/services/images/plan_image_store.dart';
 import 'package:tacca/services/links/link_opener.dart';
+import 'package:tacca/services/live_session/live_session_controller.dart';
 import 'package:tacca/services/notifications/session_notifier.dart';
 import 'package:tacca/services/timer/timer_engine.dart';
 import 'package:tacca/services/wakelock/screen_wake.dart';
@@ -83,6 +84,7 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
 
   int _nextId = 1;
   final _controller = StreamController<List<WorkoutLog>>.broadcast();
+  final _inProgressController = StreamController<WorkoutLog?>.broadcast();
 
   @override
   WorkoutLog startSession({
@@ -90,8 +92,18 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
     required WorkoutDay day,
     DateTime? startedAt,
   }) {
+    final start = startedAt ?? DateTime(2026, 8, 15, 18);
+    // Come in produzione: una sessione per volta, quella aperta si chiude.
+    for (final open in logs.values) {
+      if (open.status == WorkoutStatus.inProgress) {
+        open
+          ..status = WorkoutStatus.aborted
+          ..finishedAt = start;
+      }
+    }
+
     final log = WorkoutLog.start(
-      startedAt: startedAt ?? DateTime(2026, 8, 15, 18),
+      startedAt: start,
       planNameSnapshot: plan.name,
       dayLabelSnapshot: day.label,
     );
@@ -116,6 +128,12 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
   }
 
   @override
+  Stream<WorkoutLog?> watchInProgress() async* {
+    yield findInProgress();
+    yield* _inProgressController.stream;
+  }
+
+  @override
   WorkoutLog? getById(int id) => logs[id];
 
   @override
@@ -135,21 +153,33 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
     if (log.id == 0) log.id = _nextId++;
     logs[log.id] = log;
     saveCount++;
-    if (!_controller.isClosed) _controller.add(_finished());
+    _notify();
     return log.id;
   }
 
   @override
   void deleteLog(int logId) {
     logs.remove(logId);
+    _notify();
+  }
+
+  /// Come i watcher di ObjectBox: ogni scrittura ripropaga entrambi gli
+  /// elenchi osservati.
+  void _notify() {
     if (!_controller.isClosed) _controller.add(_finished());
+    if (!_inProgressController.isClosed) {
+      _inProgressController.add(findInProgress());
+    }
   }
 
   @override
   LastPerformance? lastPerformance(String exerciseName, {int? excludeLogId}) =>
       lastPerformances[exerciseName];
 
-  Future<void> dispose() => _controller.close();
+  Future<void> dispose() async {
+    await _controller.close();
+    await _inProgressController.close();
+  }
 }
 
 /// Registra i segnali resi percepibili, senza toccare audio o vibrazione.
@@ -170,6 +200,7 @@ class RecordingSessionFeedback implements SessionFeedback {
 /// Registra le notifiche programmate invece di parlare con il sistema.
 class RecordingSessionNotifier implements SessionNotifier {
   final List<List<DateTime>> scheduled = [];
+  final List<({String title, String body})> scheduledText = [];
   int cancelCount = 0;
 
   @override
@@ -182,10 +213,70 @@ class RecordingSessionNotifier implements SessionNotifier {
     required String body,
   }) async {
     scheduled.add(times);
+    scheduledText.add((title: title, body: body));
   }
 
   @override
   Future<void> cancelPending() async => cancelCount++;
+}
+
+/// Etichette della schermata di blocco: in produzione arrivano dagli ARB
+/// passando dal router, nei test bastano queste.
+const kTestLiveLabels = LiveSessionLabels(
+  title: 'Allenamento',
+  setsLabel: 'Serie',
+  completeAction: 'Serie fatta',
+  restLabel: 'Recupero',
+  restDoneLabel: 'Recupero finito',
+);
+
+/// Registra quello che finisce sulla schermata di blocco e permette di
+/// simulare una conferma arrivata da lì, senza Live Activity né notifiche.
+class RecordingLiveSession implements LiveSessionController {
+  final List<LiveSessionSnapshot> started = [];
+  final List<LiveSessionSnapshot> updated = [];
+  int stopCount = 0;
+
+  /// Azioni che il prossimo [drainPendingActions] restituirà: è la coda
+  /// riempita dal nativo mentre l'app era ferma.
+  List<LiveSessionAction> pending = [];
+
+  final _controller = StreamController<LiveSessionAction>.broadcast();
+
+  /// Ultimo stato pubblicato, da qualunque delle due strade.
+  LiveSessionSnapshot? get last => updated.isNotEmpty
+      ? updated.last
+      : (started.isNotEmpty ? started.last : null);
+
+  /// Conferma consegnata subito, con l'app ancora viva.
+  void deliver(LiveSessionAction action) => _controller.add(action);
+
+  @override
+  Stream<LiveSessionAction> get actions => _controller.stream;
+
+  @override
+  Future<bool> isSupported() async => true;
+
+  @override
+  Future<void> start(LiveSessionSnapshot snapshot) async =>
+      started.add(snapshot);
+
+  @override
+  Future<void> update(LiveSessionSnapshot snapshot) async =>
+      updated.add(snapshot);
+
+  @override
+  Future<void> stop() async => stopCount++;
+
+  @override
+  Future<List<LiveSessionAction>> drainPendingActions() async {
+    final queued = pending;
+    pending = [];
+    return queued;
+  }
+
+  @override
+  Future<void> dispose() async => _controller.close();
 }
 
 /// Traccia le richieste di wake lock.

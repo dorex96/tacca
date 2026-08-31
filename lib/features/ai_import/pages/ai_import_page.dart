@@ -8,10 +8,12 @@ import '../../../core/design/app_typography.dart';
 import '../../../core/design/linear_icons.dart';
 import '../../../core/widgets/app_field.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/info_banner.dart';
 import '../../../core/widgets/pill_button.dart';
 import '../../../core/widgets/square_icon_button.dart';
+import '../../../core/widgets/surface_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../cubit/ai_import_cubit.dart';
 import '../cubit/ai_import_state.dart';
@@ -52,6 +54,13 @@ class AiImportPage extends StatelessWidget {
 
         return AppScaffold(
           leading: const AppBackButton(),
+          actions: [
+            SquareIconButton(
+              icon: AppIcons.info,
+              tooltip: l10n.aiImportInfoTooltip,
+              onPressed: () => _showImportInfoDialog(context),
+            ),
+          ],
           title: l10n.aiImportTitle,
           // "Digitalizza" è l'unica azione che spende: sta nella pillola in
           // fondo, staccata dal modulo, e non parte mai da sola (RNF-07).
@@ -75,6 +84,36 @@ class AiImportPage extends StatelessWidget {
       },
     );
   }
+}
+
+/// Spiega, dietro l'"i" vicino al titolo, che foto serve e come scrivere il
+/// testo — con un esempio, così chi arriva qui senza aver mai usato l'import
+/// non deve indovinare il formato.
+void _showImportInfoDialog(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+
+  showInfoDialog(
+    context,
+    title: l10n.aiImportInfoTitle,
+    message: l10n.aiImportInfoBody,
+    child: SurfaceCard(
+      color: AppColors.fill,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.aiImportInfoExampleLabel,
+            style: AppTypography.sectionLabel,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            l10n.aiImportInfoExampleText,
+            style: AppTypography.paragraphSmall,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Le funzioni AI non si nascondono: si spiegano e si rimanda alle

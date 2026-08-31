@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>La fotocamera serve per fotografare una scheda di allenamento cartacea da digitalizzare.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
