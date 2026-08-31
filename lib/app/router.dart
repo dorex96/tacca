@@ -83,17 +83,6 @@ GoRouter createRouter() {
                 path: '/settings',
                 builder: (context, state) => const SettingsPage(),
                 routes: [
-                  GoRoute(
-                    path: 'ai',
-                    builder: (context, state) => BlocProvider(
-                      create: (context) => SettingsCubit(
-                        settings: context.read<SettingsRepository>(),
-                        provider: context.read<AiProvider>(),
-                        selection: context.read<AiSelectionResolver>(),
-                      ),
-                      child: const AiSettingsPage(),
-                    ),
-                  ),
                   // La manleva accettata al primo avvio, rileggibile quando
                   // si vuole.
                   GoRoute(
@@ -105,6 +94,23 @@ GoRouter createRouter() {
             ],
           ),
         ],
+      ),
+      // Impostazioni AI (RF-08). Vive **fuori** dalla shell anche se il suo
+      // posto nell'interfaccia è dentro Impostazioni: ci si arriva anche
+      // dall'import senza key, cioè da una pagina che è già di primo
+      // livello. Se fosse un ramo della shell, quella push ricostruirebbe la
+      // shell come seconda pagina del navigator radice e il framework si
+      // ferma su chiavi di pagina duplicate ('!keyReservation.contains(key)').
+      GoRoute(
+        path: '/settings/ai',
+        builder: (context, state) => BlocProvider(
+          create: (context) => SettingsCubit(
+            settings: context.read<SettingsRepository>(),
+            provider: context.read<AiProvider>(),
+            selection: context.read<AiSelectionResolver>(),
+          ),
+          child: const AiSettingsPage(),
+        ),
       ),
       GoRoute(
         path: '/plans/new',

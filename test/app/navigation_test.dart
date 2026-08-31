@@ -5,11 +5,15 @@ import 'package:tacca/data/entities/workout_day.dart';
 import 'package:tacca/data/entities/workout_log.dart';
 import 'package:tacca/data/entities/workout_plan.dart';
 import 'package:tacca/data/repositories/plan_repository.dart';
+import 'package:tacca/data/repositories/settings_repository.dart';
 import 'package:tacca/data/repositories/workout_log_repository.dart';
 import 'package:tacca/features/history/cubit/history_cubit.dart';
 import 'package:tacca/features/plans/cubit/plans_cubit.dart';
 import 'package:tacca/features/workout/cubit/active_session_cubit.dart';
 import 'package:tacca/l10n/app_localizations.dart';
+import 'package:tacca/services/ai/ai_provider.dart';
+import 'package:tacca/services/ai/ai_selection.dart';
+import 'package:tacca/services/ai/model_catalog.dart';
 import 'package:tacca/services/feedback/session_feedback.dart';
 import 'package:tacca/services/live_session/live_session_controller.dart';
 import 'package:tacca/services/notifications/session_notifier.dart';
@@ -18,9 +22,36 @@ import 'package:tacca/services/wakelock/screen_wake.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart' show GoRouter;
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../support/fakes.dart';
+
+/// Catalogo minimo: alle impostazioni AI serve un provider da mostrare.
+const _catalog = AiModelCatalog(
+  defaultProviderId: AiProviderId.openRouter,
+  providers: [
+    AiProviderOption(
+      id: AiProviderId.openRouter,
+      label: 'OpenRouter',
+      keyHint: 'sk-or-…',
+      defaultModelId: 'deepseek/flash',
+      models: [AiModelOption(id: 'deepseek/flash', label: 'DeepSeek Flash')],
+    ),
+  ],
+);
+
+class _FakeAiProvider implements AiProvider {
+  @override
+  Future<PlanExtraction> extractPlan({
+    List<AiImage> images = const [],
+    String? text,
+    String? userHint,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> testConnection() async {}
+}
 
 // Smoke test della navigazione a 3 tab. Monta shell + router con repository
 // fake in memoria: le pagine dipendono dai Cubit di feature, ma il test resta
@@ -43,16 +74,23 @@ void main() {
     return plan;
   }
 
-  Future<void> pumpApp(
+  Future<GoRouter> pumpApp(
     WidgetTester tester, {
     required FakePlanRepository plans,
     required FakeWorkoutLogRepository logs,
   }) async {
+    final settings = FakeSettingsRepository();
+    final router = createRouter();
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<PlanRepository>.value(value: plans),
           RepositoryProvider<WorkoutLogRepository>.value(value: logs),
+          RepositoryProvider<SettingsRepository>.value(value: settings),
+          RepositoryProvider<AiProvider>.value(value: _FakeAiProvider()),
+          RepositoryProvider<AiSelectionResolver>.value(
+            value: AiSelectionResolver(settings: settings, catalog: _catalog),
+          ),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -69,12 +107,13 @@ void main() {
           child: MaterialApp.router(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            routerConfig: createRouter(),
+            routerConfig: router,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+    return router;
   }
 
   testWidgets('mostra tre destinazioni e parte dalle Schede', (tester) async {
@@ -122,6 +161,36 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'le impostazioni AI si aprono anche da una pagina fuori dalla shell',
+    (tester) async {
+      final router = await pumpApp(
+        tester,
+        plans: FakePlanRepository(),
+        logs: FakeWorkoutLogRepository(),
+      );
+
+      // Il percorso dell'import senza key: si è già su una pagina di primo
+      // livello e da lì si va alle impostazioni. Finché `/settings/ai` era
+      // un ramo della shell, questa push ricostruiva la shell come seconda
+      // pagina del navigator radice e il framework si fermava su chiavi di
+      // pagina duplicate.
+      router.push('/plans/new');
+      await tester.pumpAndSettle();
+      router.push('/settings/ai');
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Configurazione AI'), findsOneWidget);
+
+      // E si torna indietro sulla pagina da cui si era partiti, non nella
+      // shell.
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Nuova scheda'), findsWidgets);
+    },
+  );
 
   testWidgets('all\'avvio propone di riprendere la sessione interrotta', (
     tester,
