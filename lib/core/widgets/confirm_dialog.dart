@@ -125,14 +125,57 @@ Future<String?> showTextInputDialog(
   required String label,
   required String initialValue,
   String? confirmLabel,
-}) async {
-  final l10n = AppLocalizations.of(context);
-  final controller = TextEditingController(text: initialValue);
-
-  final result = await showDialog<String>(
+}) {
+  return showDialog<String>(
     context: context,
     barrierColor: AppColors.scrim,
-    builder: (context) => Dialog(
+    builder: (context) => _TextInputDialog(
+      title: title,
+      label: label,
+      initialValue: initialValue,
+      confirmLabel: confirmLabel,
+    ),
+  );
+}
+
+/// Il `TextEditingController` vive nello `State` perché sia il framework a
+/// liberarlo quando l'elemento viene smontato — cioè *dopo* la transizione di
+/// uscita del dialog. Disporlo a mano subito dopo `await showDialog` lo libera
+/// mentre la transizione è ancora in corso e il `TextField` può ricostruirsi
+/// contro un controller già distrutto.
+class _TextInputDialog extends StatefulWidget {
+  const _TextInputDialog({
+    required this.title,
+    required this.label,
+    required this.initialValue,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String label;
+  final String initialValue;
+  final String? confirmLabel;
+
+  @override
+  State<_TextInputDialog> createState() => _TextInputDialogState();
+}
+
+class _TextInputDialogState extends State<_TextInputDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Dialog(
       insetPadding: const EdgeInsets.all(AppSpacing.xl),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -140,14 +183,14 @@ Future<String?> showTextInputDialog(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: AppTypography.sheetTitleLong),
+            Text(widget.title, style: AppTypography.sheetTitleLong),
             const SizedBox(height: AppSpacing.card),
             TextField(
-              controller: controller,
+              controller: _controller,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                labelText: label,
+                labelText: widget.label,
                 fillColor: AppColors.fill,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -169,9 +212,9 @@ Future<String?> showTextInputDialog(
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: PillButton(
-                    label: confirmLabel ?? l10n.commonSave,
+                    label: widget.confirmLabel ?? l10n.commonSave,
                     onPressed: () =>
-                        Navigator.of(context).pop(controller.text.trim()),
+                        Navigator.of(context).pop(_controller.text.trim()),
                   ),
                 ),
               ],
@@ -179,9 +222,6 @@ Future<String?> showTextInputDialog(
           ],
         ),
       ),
-    ),
-  );
-
-  controller.dispose();
-  return result;
+    );
+  }
 }

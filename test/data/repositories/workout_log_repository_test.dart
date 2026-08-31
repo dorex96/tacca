@@ -163,6 +163,65 @@ void main() {
     }, skip: skip);
 
     test(
+      'startSession chiude quella rimasta aperta: una sessione per volta',
+      () {
+        final (plan, day) = seedPlan();
+
+        final first = logs.startSession(
+          plan: plan,
+          day: day,
+          startedAt: DateTime(2026, 8, 14, 18),
+        );
+        // Serie registrate nella sessione che sta per essere chiusa: devono
+        // sopravvivere: interrotta non vuol dire cancellata (RF-07).
+        first.entries.first.sets.add(
+          LogSet(setNumber: 1, reps: '8', completedAt: DateTime(2026, 8, 14)),
+        );
+        logs.saveLog(first);
+
+        final second = logs.startSession(
+          plan: plan,
+          day: day,
+          startedAt: DateTime(2026, 8, 15, 18),
+        );
+
+        final closed = logs.getById(first.id)!;
+        expect(closed.status, WorkoutStatus.aborted);
+        expect(closed.finishedAt, second.startedAt);
+        expect(closed.entries.first.sets, hasLength(1));
+
+        // Ne resta aperta una sola, ed è quella appena iniziata.
+        expect(logs.findInProgress()?.id, second.id);
+      },
+      skip: skip,
+    );
+
+    test('watchInProgress segue apertura e chiusura della sessione', () async {
+      final (plan, day) = seedPlan();
+      final emissions = <int?>[];
+      final subscription = logs.watchInProgress().listen(
+        (log) => emissions.add(log?.id),
+      );
+      addTearDown(subscription.cancel);
+      await Future<void>.delayed(Duration.zero);
+
+      final log = logs.startSession(plan: plan, day: day);
+      await Future<void>.delayed(Duration.zero);
+
+      log
+        ..status = WorkoutStatus.completed
+        ..finishedAt = DateTime(2026, 8, 15, 19);
+      logs.saveLog(log);
+      await Future<void>.delayed(Duration.zero);
+
+      // Nessuna sessione → quella aperta → di nuovo nessuna: è ciò che
+      // permette alla UI di accorgersene senza riavviare l'app.
+      expect(emissions.first, isNull);
+      expect(emissions, contains(log.id));
+      expect(emissions.last, isNull);
+    }, skip: skip);
+
+    test(
       'watchFinished esclude le sessioni in corso, più recenti prima',
       () async {
         final (plan, day) = seedPlan();

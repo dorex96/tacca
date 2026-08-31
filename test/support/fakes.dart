@@ -84,6 +84,7 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
 
   int _nextId = 1;
   final _controller = StreamController<List<WorkoutLog>>.broadcast();
+  final _inProgressController = StreamController<WorkoutLog?>.broadcast();
 
   @override
   WorkoutLog startSession({
@@ -91,8 +92,18 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
     required WorkoutDay day,
     DateTime? startedAt,
   }) {
+    final start = startedAt ?? DateTime(2026, 8, 15, 18);
+    // Come in produzione: una sessione per volta, quella aperta si chiude.
+    for (final open in logs.values) {
+      if (open.status == WorkoutStatus.inProgress) {
+        open
+          ..status = WorkoutStatus.aborted
+          ..finishedAt = start;
+      }
+    }
+
     final log = WorkoutLog.start(
-      startedAt: startedAt ?? DateTime(2026, 8, 15, 18),
+      startedAt: start,
       planNameSnapshot: plan.name,
       dayLabelSnapshot: day.label,
     );
@@ -117,6 +128,12 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
   }
 
   @override
+  Stream<WorkoutLog?> watchInProgress() async* {
+    yield findInProgress();
+    yield* _inProgressController.stream;
+  }
+
+  @override
   WorkoutLog? getById(int id) => logs[id];
 
   @override
@@ -136,21 +153,33 @@ class FakeWorkoutLogRepository implements WorkoutLogRepository {
     if (log.id == 0) log.id = _nextId++;
     logs[log.id] = log;
     saveCount++;
-    if (!_controller.isClosed) _controller.add(_finished());
+    _notify();
     return log.id;
   }
 
   @override
   void deleteLog(int logId) {
     logs.remove(logId);
+    _notify();
+  }
+
+  /// Come i watcher di ObjectBox: ogni scrittura ripropaga entrambi gli
+  /// elenchi osservati.
+  void _notify() {
     if (!_controller.isClosed) _controller.add(_finished());
+    if (!_inProgressController.isClosed) {
+      _inProgressController.add(findInProgress());
+    }
   }
 
   @override
   LastPerformance? lastPerformance(String exerciseName, {int? excludeLogId}) =>
       lastPerformances[exerciseName];
 
-  Future<void> dispose() => _controller.close();
+  Future<void> dispose() async {
+    await _controller.close();
+    await _inProgressController.close();
+  }
 }
 
 /// Registra i segnali resi percepibili, senza toccare audio o vibrazione.
@@ -171,6 +200,7 @@ class RecordingSessionFeedback implements SessionFeedback {
 /// Registra le notifiche programmate invece di parlare con il sistema.
 class RecordingSessionNotifier implements SessionNotifier {
   final List<List<DateTime>> scheduled = [];
+  final List<({String title, String body})> scheduledText = [];
   int cancelCount = 0;
 
   @override
@@ -183,6 +213,7 @@ class RecordingSessionNotifier implements SessionNotifier {
     required String body,
   }) async {
     scheduled.add(times);
+    scheduledText.add((title: title, body: body));
   }
 
   @override

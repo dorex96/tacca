@@ -27,6 +27,12 @@ abstract interface class WorkoutLogRepository {
   /// Apre una nuova sessione su [day] di [plan] e la persiste subito con stato
   /// `inProgress`: una entry per ogni esercizio prescritto del giorno, nello
   /// stesso ordine in cui compaiono nei blocchi.
+  ///
+  /// **Una sessione per volta**: se ne esiste un'altra ancora aperta viene
+  /// chiusa come interrotta prima di aprire questa. La UI lo chiede
+  /// all'utente (RF-06), ma la regola vale comunque, da qualunque strada si
+  /// arrivi ad aprire una sessione: due sessioni aperte insieme
+  /// significherebbe due autosave concorrenti sullo stesso allenamento.
   WorkoutLog startSession({
     required WorkoutPlan plan,
     required WorkoutDay day,
@@ -34,8 +40,16 @@ abstract interface class WorkoutLogRepository {
   });
 
   /// Sessione rimasta aperta (chiusura o crash dell'app): al più una, la più
-  /// recente. Alimenta la proposta di ripresa all'avvio (§8).
+  /// recente.
+  ///
+  /// Lettura sincrona: serve dove la decisione non può aspettare il giro di
+  /// [watchInProgress], cioè un istante prima di aprirne un'altra.
   WorkoutLog? findInProgress();
+
+  /// Come [findInProgress], ma osservata: la sessione aperta cambia mentre
+  /// l'app è viva — se ne apre una, la si chiude, la si riprende — e le
+  /// schermate devono accorgersene senza essere riaperte (§8).
+  Stream<WorkoutLog?> watchInProgress();
 
   /// Log completo con entry e serie già ordinate.
   WorkoutLog? getById(int id);
@@ -71,8 +85,14 @@ class ObjectBoxWorkoutLogRepository implements WorkoutLogRepository {
     required WorkoutDay day,
     DateTime? startedAt,
   }) {
+    final start = startedAt ?? DateTime.now();
+    // Quella eventualmente rimasta aperta si chiude qui: è l'unico punto da
+    // cui nasce una sessione, quindi è il punto in cui "una sola per volta"
+    // smette di essere una raccomandazione alla UI.
+    _abortOpenSessions(at: start);
+
     final log = WorkoutLog.start(
-      startedAt: startedAt ?? DateTime.now(),
+      startedAt: start,
       planNameSnapshot: plan.name,
       dayLabelSnapshot: day.label,
     );
@@ -105,10 +125,47 @@ class ObjectBoxWorkoutLogRepository implements WorkoutLogRepository {
   }
 
   @override
+  Stream<WorkoutLog?> watchInProgress() {
+    return (_logBox.query(
+          WorkoutLog_.dbStatus.equals(WorkoutStatus.inProgress.name),
+        )..order(WorkoutLog_.startedAt, flags: Order.descending))
+        .watch(triggerImmediately: true)
+        .map((query) {
+          final log = query.findFirst();
+          if (log != null) _sortLogTree(log);
+          return log;
+        });
+  }
+
+  @override
   WorkoutLog? getById(int id) {
     final log = _logBox.get(id);
     if (log != null) _sortLogTree(log);
     return log;
+  }
+
+  /// Chiude come interrotte le sessioni ancora aperte, datandole [at].
+  ///
+  /// Interrotte e non eliminate: quello che l'utente ha già registrato resta
+  /// nello storico (RF-07). Sono al più una, ma la query le prende tutte —
+  /// un database che ne contenesse due deve tornare a posto, non restare
+  /// mezzo aperto.
+  void _abortOpenSessions({required DateTime at}) {
+    _objectBox.store.runInTransaction(TxMode.write, () {
+      final query = _logBox
+          .query(WorkoutLog_.dbStatus.equals(WorkoutStatus.inProgress.name))
+          .build();
+      try {
+        for (final log in query.find()) {
+          log
+            ..status = WorkoutStatus.aborted
+            ..finishedAt = at;
+          _logBox.put(log);
+        }
+      } finally {
+        query.close();
+      }
+    });
   }
 
   @override
