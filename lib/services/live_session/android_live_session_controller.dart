@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../notifications/notification_host.dart';
+import '../notifications/session_notifier.dart';
 import 'live_session_controller.dart';
 import 'pending_action_queue.dart';
 
@@ -16,6 +18,11 @@ const String kCompleteSetActionId = 'live_session.complete_set';
 /// Nome del file della coda dentro la directory di supporto dell'app.
 const String kPendingActionsFileName = 'live_session_actions.json';
 
+/// Id della notifica di sessione: fuori dall'intervallo dei segnali del timer
+/// (9100+) e fuori dalla classe, perché la ridisegna anche l'isolate di
+/// background.
+const int _liveNotificationId = 9200;
+
 /// Notifica persistente della sessione su Android.
 ///
 /// È l'equivalente della Live Activity di iOS con i mezzi del sistema: una
@@ -24,10 +31,9 @@ const String kPendingActionsFileName = 'live_session_actions.json';
 /// fermo) e un pulsante che conferma la serie senza aprire l'app.
 ///
 /// Non c'è un foreground service: la notifica sopravvive comunque alla morte
-/// del processo, il countdown lo disegna il sistema e il beep di fine recupero
-/// è già un alarm esatto programmato da `SessionNotifier`. Il prezzo è che, se
-/// il processo viene ucciso, il testo della notifica resta fermo fino alla
-/// riapertura dell'app — la conferma però non si perde: finisce nella coda.
+/// del processo e il countdown lo disegna il sistema. Al tap sul pulsante non
+/// risponde questa classe ma [liveSessionActionBackground], che gira in un
+/// isolate a sé e fa da solo quello che farebbe l'app.
 class AndroidLiveSessionController implements LiveSessionController {
   AndroidLiveSessionController({
     required NotificationHost host,
@@ -36,14 +42,6 @@ class AndroidLiveSessionController implements LiveSessionController {
   }) : _host = host,
        _supportDirectory = supportDirectory ?? getApplicationSupportDirectory,
        _now = now ?? DateTime.now;
-
-  /// Id riservato: sta fuori dall'intervallo dei segnali del timer (9100+).
-  static const int _notificationId = 9200;
-
-  static const _channelId = 'workout_live';
-  static const _channelName = 'Sessione in corso';
-  static const _channelDescription =
-      'Esercizio corrente e recupero, con la conferma della serie';
 
   final NotificationHost _host;
   final Future<Directory> Function() _supportDirectory;
@@ -105,7 +103,7 @@ class AndroidLiveSessionController implements LiveSessionController {
     _queue?.clear();
     _queue = null;
     try {
-      await _host.plugin.cancel(id: _notificationId);
+      await _host.plugin.cancel(id: _liveNotificationId);
     } catch (error, stackTrace) {
       reportNotificationError('notifica di sessione', error, stackTrace);
     }
@@ -138,58 +136,11 @@ class AndroidLiveSessionController implements LiveSessionController {
   }
 
   Future<void> _publish(LiveSessionSnapshot snapshot) async {
-    final countdown = snapshot.countdownEndsAt;
-    final label = snapshot.countdownLabel;
-    // A serie esaurite non c'è nessun numero da mostrare: resta il titolo.
-    final sets = switch (snapshot) {
-      _ when snapshot.setNumber <= 0 => snapshot.labels.title,
-      _ when snapshot.totalSets > 0 =>
-        '${snapshot.labels.setsLabel} ${snapshot.setNumber}/${snapshot.totalSets}',
-      _ => '${snapshot.labels.setsLabel} ${snapshot.setNumber}',
-    };
-    final details = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
-      // Bassa importanza: è uno stato, non un allarme. Il beep di fine
-      // recupero resta quello del canale dei timer.
-      importance: Importance.low,
-      priority: Priority.low,
-      category: AndroidNotificationCategory.workout,
-      ongoing: true,
-      autoCancel: false,
-      onlyAlertOnce: true,
-      playSound: false,
-      enableVibration: false,
-      visibility: NotificationVisibility.public,
-      subText: snapshot.labels.title,
-      showWhen: countdown != null,
-      when: countdown?.millisecondsSinceEpoch,
-      usesChronometer: countdown != null,
-      chronometerCountDown: countdown != null,
-      actions: [
-        if (snapshot.canCompleteSet)
-          AndroidNotificationAction(
-            kCompleteSetActionId,
-            snapshot.labels.completeAction,
-            // Il pulsante non deve aprire l'app né far sparire la notifica:
-            // è tutto il senso della cosa.
-            showsUserInterface: false,
-            cancelNotification: false,
-          ),
-      ],
-    );
-
     try {
-      await _host.plugin.show(
-        id: _notificationId,
-        title: snapshot.exerciseName,
-        body: label != null ? '$label · $sets' : sets,
-        notificationDetails: NotificationDetails(android: details),
-        payload: LiveActionPayload.forSnapshot(
-          snapshot,
-          queuePath: _queue?.file.path ?? '',
-        ).encode(),
+      await showLiveSessionNotification(
+        _host.plugin,
+        snapshot,
+        queuePath: _queue?.file.path ?? '',
       );
       _shown = snapshot;
     } catch (error, stackTrace) {
@@ -213,38 +164,26 @@ class AndroidLiveSessionController implements LiveSessionController {
 
 /// Dati che viaggiano nel payload della notifica.
 ///
-/// Contiene anche il percorso della coda: così l'isolate di background non ha
-/// bisogno di `path_provider` — e quindi di registrare i plugin — per sapere
-/// dove scrivere.
+/// Porta lo **stato mostrato**, non solo le coordinate della serie: l'isolate
+/// di background non ha nessun altro modo di sapere cosa c'è scritto sulla
+/// notifica che l'utente ha appena premuto, e senza quello non può
+/// ridisegnarla. È il posto che su iOS occupa `Activity.content.state`.
+///
+/// Contiene anche il percorso della coda: così l'isolate non ha bisogno di
+/// `path_provider` — e quindi di plugin registrati — per sapere dove scrivere.
 class LiveActionPayload {
-  const LiveActionPayload({
-    required this.queuePath,
-    required this.logId,
-    required this.entryIndex,
-    required this.setNumber,
-  });
+  const LiveActionPayload({required this.queuePath, required this.snapshot});
 
   factory LiveActionPayload.forSnapshot(
     LiveSessionSnapshot snapshot, {
     required String queuePath,
-  }) => LiveActionPayload(
-    queuePath: queuePath,
-    logId: snapshot.logId,
-    entryIndex: snapshot.entryIndex,
-    setNumber: snapshot.setNumber,
-  );
+  }) => LiveActionPayload(queuePath: queuePath, snapshot: snapshot);
 
   final String queuePath;
-  final int logId;
-  final int entryIndex;
-  final int setNumber;
+  final LiveSessionSnapshot snapshot;
 
-  String encode() => jsonEncode({
-    'queuePath': queuePath,
-    'logId': logId,
-    'entryIndex': entryIndex,
-    'setNumber': setNumber,
-  });
+  String encode() =>
+      jsonEncode({'queuePath': queuePath, 'snapshot': snapshot.toMap()});
 
   static LiveActionPayload? tryParse(String? raw) {
     if (raw == null || raw.isEmpty) return null;
@@ -252,21 +191,9 @@ class LiveActionPayload {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
       final queuePath = decoded['queuePath'];
-      final logId = decoded['logId'];
-      final entryIndex = decoded['entryIndex'];
-      final setNumber = decoded['setNumber'];
-      if (queuePath is! String ||
-          logId is! int ||
-          entryIndex is! int ||
-          setNumber is! int) {
-        return null;
-      }
-      return LiveActionPayload(
-        queuePath: queuePath,
-        logId: logId,
-        entryIndex: entryIndex,
-        setNumber: setNumber,
-      );
+      final snapshot = LiveSessionSnapshot.tryParse(decoded['snapshot']);
+      if (queuePath is! String || snapshot == null) return null;
+      return LiveActionPayload(queuePath: queuePath, snapshot: snapshot);
     } catch (_) {
       return null;
     }
@@ -275,28 +202,145 @@ class LiveActionPayload {
   LiveSessionAction toAction(DateTime at) => LiveSessionAction(
     // Deterministico: la stessa conferma consegnata due volte (stream e coda)
     // viene riconosciuta e applicata una volta sola.
-    id: 'set-$logId-$entryIndex-$setNumber-${at.millisecondsSinceEpoch}',
+    id:
+        'set-${snapshot.logId}-${snapshot.entryIndex}-${snapshot.setNumber}'
+        '-${at.millisecondsSinceEpoch}',
     kind: LiveSessionActionKind.setCompleted,
-    logId: logId,
-    entryIndex: entryIndex,
-    setNumber: setNumber,
+    logId: snapshot.logId,
+    entryIndex: snapshot.entryIndex,
+    setNumber: snapshot.setNumber,
     at: at,
   );
 }
 
-/// Conferma arrivata a processo ucciso: gira in un isolate senza Bloc, senza
-/// database e senza plugin registrati.
+/// Disegna la notifica di sessione a partire da [snapshot].
 ///
-/// Fa una cosa sola, in modo sincrono: mette l'azione in coda. Non ridisegna
-/// la notifica (servirebbe reinizializzare il plugin in un isolate che sta per
-/// spegnersi): il banner resta fermo fino alla riapertura dell'app, ma la
-/// serie confermata non si perde.
+/// Sta fuori dalla classe perché non la disegna solo il controller: la
+/// ridisegna anche l'isolate di background alla conferma di una serie, dove
+/// non esistono né controller né [NotificationHost] e il plugin è un'istanza
+/// nuova sul motore appena acceso.
+Future<void> showLiveSessionNotification(
+  FlutterLocalNotificationsPlugin plugin,
+  LiveSessionSnapshot snapshot, {
+  required String queuePath,
+}) {
+  final countdown = snapshot.countdownEndsAt;
+  final label = snapshot.countdownLabel;
+  // A serie esaurite non c'è nessun numero da mostrare: resta il titolo.
+  final sets = switch (snapshot) {
+    _ when snapshot.setNumber <= 0 => snapshot.labels.title,
+    _ when snapshot.totalSets > 0 =>
+      '${snapshot.labels.setsLabel} ${snapshot.setNumber}/${snapshot.totalSets}',
+    _ => '${snapshot.labels.setsLabel} ${snapshot.setNumber}',
+  };
+  final details = AndroidNotificationDetails(
+    'workout_live',
+    'Sessione in corso',
+    channelDescription:
+        'Esercizio corrente e recupero, con la conferma della serie',
+    // Bassa importanza: è uno stato, non un allarme. Il beep di fine
+    // recupero resta quello del canale dei timer.
+    importance: Importance.low,
+    priority: Priority.low,
+    category: AndroidNotificationCategory.workout,
+    ongoing: true,
+    autoCancel: false,
+    onlyAlertOnce: true,
+    playSound: false,
+    enableVibration: false,
+    visibility: NotificationVisibility.public,
+    subText: snapshot.labels.title,
+    showWhen: countdown != null,
+    when: countdown?.millisecondsSinceEpoch,
+    usesChronometer: countdown != null,
+    chronometerCountDown: countdown != null,
+    actions: [
+      if (snapshot.canCompleteSet)
+        AndroidNotificationAction(
+          kCompleteSetActionId,
+          snapshot.labels.completeAction,
+          // Il pulsante non deve aprire l'app né far sparire la notifica:
+          // è tutto il senso della cosa.
+          showsUserInterface: false,
+          cancelNotification: false,
+        ),
+    ],
+  );
+
+  return plugin.show(
+    id: _liveNotificationId,
+    title: snapshot.exerciseName,
+    body: label != null ? '$label · $sets' : sets,
+    notificationDetails: NotificationDetails(android: details),
+    payload: LiveActionPayload.forSnapshot(
+      snapshot,
+      queuePath: queuePath,
+    ).encode(),
+  );
+}
+
+/// Conferma premuta sulla notifica: gira in un isolate senza Bloc, senza
+/// database e senza l'app. Il broadcast arriva anche a processo ucciso, e ci
+/// passa comunque anche ad app viva: il plugin non consegna mai le azioni
+/// all'isolate principale.
+///
+/// Fa le stesse tre cose di `CompleteSetIntent.swift`, nello stesso ordine:
+///
+/// 1. mette l'azione in coda, **in modo sincrono** — è l'unica che non può
+///    fallire senza perdere il lavoro dell'utente;
+/// 2. ridisegna la notifica con la serie dopo e il recupero già avviato, così
+///    il tap ha un effetto visibile senza aprire l'app;
+/// 3. programma il beep di fine recupero, perché lo darebbe l'app e l'app non
+///    è sveglia.
+///
+/// I punti 2 e 3 girano su un motore che il sistema può spegnere appena il
+/// broadcast è servito: se non arrivano in fondo si perde l'aggiornamento del
+/// banner, non la serie. L'app, al rientro, drena la coda e ricalcola tutto —
+/// ed è lei che annulla il beep, perché l'id appartiene a `SessionNotifier`.
 @pragma('vm:entry-point')
-void liveSessionActionBackground(NotificationResponse response) {
+Future<void> liveSessionActionBackground(NotificationResponse response) async {
   if (response.actionId != kCompleteSetActionId) return;
   final payload = LiveActionPayload.tryParse(response.payload);
   if (payload == null || payload.queuePath.isEmpty) return;
-  PendingActionQueue(
-    File(payload.queuePath),
-  ).append(payload.toAction(DateTime.now()));
+  final shown = payload.snapshot;
+  // Il pulsante non esiste quando non c'è più niente da spuntare: un tap su
+  // una notifica rimasta indietro non deve inventare una serie.
+  if (!shown.canCompleteSet) return;
+
+  final at = DateTime.now();
+  PendingActionQueue(File(payload.queuePath)).append(payload.toAction(at));
+
+  // I plugin sono registrati anche qui — il motore di background lo fa da sé —
+  // ma non c'è nessuna `initialize` da rifare: l'icona di default l'ha già
+  // salvata l'app, e reinizializzare vorrebbe dire riscrivere gli handle delle
+  // callback da un isolate che sta per spegnersi.
+  final plugin = FlutterLocalNotificationsPlugin();
+  try {
+    await showLiveSessionNotification(
+      plugin,
+      shown.afterSetCompleted(at),
+      queuePath: payload.queuePath,
+    );
+  } catch (error, stackTrace) {
+    reportNotificationError('notifica di sessione', error, stackTrace);
+  }
+
+  if (shown.restSecondsOnComplete <= 0) return;
+  try {
+    await plugin.zonedSchedule(
+      id: kBackgroundRestReminderId,
+      // `tz.UTC` esiste senza inizializzare il database dei fusi orari: qui
+      // serve un istante assoluto, non un orario locale da mostrare.
+      scheduledDate: tz.TZDateTime.from(
+        at.add(Duration(seconds: shown.restSecondsOnComplete)),
+        tz.UTC,
+      ),
+      title: shown.labels.title,
+      body: shown.labels.restDoneLabel,
+      notificationDetails: kTimerSignalDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+  } catch (error, stackTrace) {
+    reportNotificationError('fine recupero', error, stackTrace);
+  }
 }

@@ -140,6 +140,119 @@ class LiveSessionSnapshot {
     ...labels.toMap(),
   };
 
+  /// Ricostruisce uno snapshot da [toMap]: lo rilegge l'isolate di background
+  /// di Android, che riceve lo stato della notifica dentro il payload e non ha
+  /// nessun altro modo di sapere cosa c'era scritto.
+  static LiveSessionSnapshot? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final labels = LiveSessionLabels.tryParse(raw);
+    final logId = raw['logId'];
+    final exerciseName = raw['exerciseName'];
+    final entryIndex = raw['entryIndex'];
+    final setNumber = raw['setNumber'];
+    final totalSets = raw['totalSets'];
+    final canCompleteSet = raw['canCompleteSet'];
+    final restSecondsOnComplete = raw['restSecondsOnComplete'];
+    if (labels == null ||
+        logId is! int ||
+        exerciseName is! String ||
+        entryIndex is! int ||
+        setNumber is! int ||
+        totalSets is! int ||
+        canCompleteSet is! bool ||
+        restSecondsOnComplete is! int) {
+      return null;
+    }
+    return LiveSessionSnapshot(
+      logId: logId,
+      exerciseName: exerciseName,
+      entryIndex: entryIndex,
+      setNumber: setNumber,
+      totalSets: totalSets,
+      canCompleteSet: canCompleteSet,
+      restSecondsOnComplete: restSecondsOnComplete,
+      countdownStartsAt: _dateOrNull(raw['countdownStartsAt']),
+      countdownEndsAt: _dateOrNull(raw['countdownEndsAt']),
+      countdownLabel: raw['countdownLabel'] as String?,
+      nextExerciseName: raw['nextExerciseName'] as String?,
+      nextEntryIndex: raw['nextEntryIndex'] as int? ?? 0,
+      nextSetNumber: raw['nextSetNumber'] as int? ?? 0,
+      nextTotalSets: raw['nextTotalSets'] as int? ?? 0,
+      nextRestSecondsOnComplete: raw['nextRestSecondsOnComplete'] as int? ?? 0,
+      labels: labels,
+    );
+  }
+
+  /// Lo stato in cui la superficie si trova subito dopo una conferma, con il
+  /// recupero avviato all'orario del tap.
+  ///
+  /// È l'unico passo avanti che si può fare senza l'app, e la stessa
+  /// aritmetica sta in `CompleteSetIntent.swift`: le due copie devono restare
+  /// identiche — questa ha dei test, quella no.
+  LiveSessionSnapshot afterSetCompleted(DateTime at) {
+    final endsAt = restSecondsOnComplete > 0
+        ? at.add(Duration(seconds: restSecondsOnComplete))
+        : null;
+
+    // Su cosa si sposta il banner. Tre casi, gli stessi dell'App Intent.
+    final focus = switch (this) {
+      // Restano serie di questo esercizio: si conta avanti e basta.
+      _ when totalSets > 0 && setNumber < totalSets => (
+        exerciseName: exerciseName,
+        entryIndex: entryIndex,
+        setNumber: setNumber + 1,
+        totalSets: totalSets,
+        restSecondsOnComplete: restSecondsOnComplete,
+        canCompleteSet: true,
+        keepLookahead: true,
+      ),
+      // Erano finite: si passa all'esercizio dopo, quello che l'app ha
+      // mandato insieme a questo. Un passo solo — quale sia quello ancora
+      // dopo lo sa soltanto lei, e il campo si azzera.
+      _ when nextExerciseName != null => (
+        exerciseName: nextExerciseName!,
+        entryIndex: nextEntryIndex,
+        setNumber: nextSetNumber,
+        totalSets: nextTotalSets,
+        restSecondsOnComplete: nextRestSecondsOnComplete,
+        canCompleteSet: nextSetNumber > 0,
+        keepLookahead: false,
+      ),
+      // Niente più da spuntare: il contatore resta sull'ultima serie fatta e
+      // il pulsante sparisce. Non si inventa una serie in più.
+      _ => (
+        exerciseName: exerciseName,
+        entryIndex: entryIndex,
+        setNumber: setNumber,
+        totalSets: totalSets,
+        restSecondsOnComplete: restSecondsOnComplete,
+        canCompleteSet: false,
+        keepLookahead: true,
+      ),
+    };
+
+    return LiveSessionSnapshot(
+      logId: logId,
+      exerciseName: focus.exerciseName,
+      entryIndex: focus.entryIndex,
+      setNumber: focus.setNumber,
+      totalSets: focus.totalSets,
+      canCompleteSet: focus.canCompleteSet,
+      restSecondsOnComplete: focus.restSecondsOnComplete,
+      countdownStartsAt: endsAt == null ? null : at,
+      countdownEndsAt: endsAt,
+      countdownLabel: endsAt == null ? null : labels.restLabel,
+      nextExerciseName: focus.keepLookahead ? nextExerciseName : null,
+      nextEntryIndex: focus.keepLookahead ? nextEntryIndex : 0,
+      nextSetNumber: focus.keepLookahead ? nextSetNumber : 0,
+      nextTotalSets: focus.keepLookahead ? nextTotalSets : 0,
+      nextRestSecondsOnComplete: focus.keepLookahead
+          ? nextRestSecondsOnComplete
+          : 0,
+      labels: labels,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       other is LiveSessionSnapshot &&
@@ -217,6 +330,32 @@ class LiveSessionLabels {
     'restLabel': restLabel,
     'restDoneLabel': restDoneLabel,
   };
+
+  /// Rilegge le etichette dalla mappa piatta prodotta da
+  /// [LiveSessionSnapshot.toMap]; `null` se ne manca anche una sola: senza
+  /// non si disegna niente di leggibile.
+  static LiveSessionLabels? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final title = raw['title'];
+    final setsLabel = raw['setsLabel'];
+    final completeAction = raw['completeAction'];
+    final restLabel = raw['restLabel'];
+    final restDoneLabel = raw['restDoneLabel'];
+    if (title is! String ||
+        setsLabel is! String ||
+        completeAction is! String ||
+        restLabel is! String ||
+        restDoneLabel is! String) {
+      return null;
+    }
+    return LiveSessionLabels(
+      title: title,
+      setsLabel: setsLabel,
+      completeAction: completeAction,
+      restLabel: restLabel,
+      restDoneLabel: restDoneLabel,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -327,3 +466,8 @@ class NoopLiveSessionController implements LiveSessionController {
   @override
   Future<void> dispose() async {}
 }
+
+/// Millisecondi dall'epoch → data, tollerante: un campo assente o di tipo
+/// sbagliato vale "nessun countdown", non un errore.
+DateTime? _dateOrNull(Object? raw) =>
+    raw is int ? DateTime.fromMillisecondsSinceEpoch(raw) : null;

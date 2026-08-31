@@ -26,18 +26,28 @@ after the app's process has been killed. Neither can open ObjectBox. So both
 do the same thing:
 
 1. write the action into a durable queue — App Group `UserDefaults` on iOS, a
-   small JSON file on Android;
-2. update the surface optimistically, so the tap has a visible effect (iOS
-   only: see the limitation below);
+   small JSON file on Android — synchronously, because it is the only step
+   that cannot fail without losing the user's work;
+2. update the surface optimistically, so the tap has a visible effect;
 3. schedule the rest-end notification, because the app is not awake to beep.
 
-The optimistic update is where the snapshot's `next*` fields earn their keep.
-The intent knows how to count the sets of the exercise on screen, but nothing
-else about the workout, so the app ships the following exercise along with the
+Step 2 is why the payload carries the whole displayed state and not just the
+coordinates of the set: neither the App Intent nor the background isolate can
+ask the app what the banner currently says. On iOS that state is
+`Activity.content.state`; on Android it rides in the notification's payload
+and comes back through `LiveSessionSnapshot.tryParse`. The arithmetic that
+produces the next state is written twice — `LiveSessionSnapshot`
+`afterSetCompleted` in Dart, `CompleteSetIntent.swift` in Swift — and the two
+copies must stay identical. The Dart one has tests; the Swift one does not.
+
+That step is also where the snapshot's `next*` fields earn their keep. The
+intent knows how to count the sets of the exercise on screen, but nothing else
+about the workout, so the app ships the following exercise along with the
 current one: confirming the last set moves the banner onto it instead of
 counting a set that does not exist ("4/3"). That is **one** step — after the
 sets of that exercise are gone too the button disappears until the app is
-reopened and recomputes the lookahead.
+reopened and recomputes the lookahead. Because each redraw republishes the new
+state into the payload, consecutive taps chain correctly without the app.
 
 `WorkoutSessionBloc` drains the queue when a session opens **and** every time
 the app returns to the foreground, then applies each action **with the
@@ -53,6 +63,18 @@ with `showsUserInterface: false` is sent to `ActionBroadcastReceiver`, which
 spins up a background isolate and calls
 `onDidReceiveBackgroundNotificationResponse` — even when the app is alive and
 in the foreground. The plugin's foreground callback never sees it.
+
+That isolate is a full Flutter engine, so plugins are registered in it
+(`AndroidFlutterLocalNotificationsPlugin.registerWith()` runs from the
+generated Dart plugin registrant, which the engine executes for every
+isolate). That is what lets the handler redraw the notification and schedule
+the beep on its own. It deliberately does *not* call `initialize` again: the
+default icon is already in shared preferences, and re-initialising would
+rewrite the stored callback handles from an isolate that is about to be torn
+down. The rest-end reminder is scheduled with `kBackgroundRestReminderId`,
+which sits at the end of the id range `SessionNotifier` owns — so the app
+cancels it with all the other timer signals the moment it takes the session
+back.
 
 ### Android manifest
 
@@ -70,11 +92,13 @@ button is drawn, it is tappable, and the tap goes nowhere — no crash, no log,
 nothing. It is already in `android/app/src/main/AndroidManifest.xml`; do not
 remove it when tidying the file.
 
-Known limitation, Android only: if the process was killed, the notification's
-text does not refresh until you reopen the app. Re-initialising the plugin
-inside a background isolate that is about to be torn down is not worth the
-failure modes — the confirmation itself is never lost, and the countdown
-keeps running because the system draws it.
+Known limitation, Android only: steps 2 and 3 run on an engine the system may
+tear down as soon as the broadcast has been served, and the very first tap
+after the process was killed also pays for starting that engine. If they do
+not finish, what is lost is the banner refresh and the beep — never the set,
+which was already written to the queue synchronously, and never the rest
+countdown that is already on screen, because the system draws it from
+`countdownEndsAt`.
 
 ## Xcode setup (iOS)
 

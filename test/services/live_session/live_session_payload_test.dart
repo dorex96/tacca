@@ -112,9 +112,9 @@ void main() {
 
       expect(decoded, isNotNull);
       expect(decoded!.queuePath, '/tmp/actions.json');
-      expect(decoded.logId, 3);
-      expect(decoded.entryIndex, 1);
-      expect(decoded.setNumber, 2);
+      // Non solo le coordinate della serie: torna indietro tutto lo stato
+      // mostrato, perché l'isolate di background deve poterlo ridisegnare.
+      expect(decoded.snapshot, snapshot);
     });
 
     test('l\'id dell\'azione identifica la serie e il momento del tap', () {
@@ -136,6 +136,115 @@ void main() {
       expect(LiveActionPayload.tryParse(''), isNull);
       expect(LiveActionPayload.tryParse('non json'), isNull);
       expect(LiveActionPayload.tryParse('{"logId":3}'), isNull);
+      expect(
+        LiveActionPayload.tryParse('{"queuePath":"/tmp/a.json"}'),
+        isNull,
+        reason: 'senza stato non c\'è niente da ridisegnare',
+      );
+    });
+  });
+
+  group('LiveSessionSnapshot.tryParse', () {
+    test('rilegge quello che ha scritto toMap', () {
+      expect(LiveSessionSnapshot.tryParse(snapshot.toMap()), snapshot);
+    });
+
+    test('rifiuta una mappa senza stato o senza etichette', () {
+      expect(LiveSessionSnapshot.tryParse(null), isNull);
+      expect(LiveSessionSnapshot.tryParse({'logId': 3}), isNull);
+      final senzaEtichette = snapshot.toMap()..remove('completeAction');
+      expect(LiveSessionSnapshot.tryParse(senzaEtichette), isNull);
+    });
+  });
+
+  /// Il passo che il sistema fa da solo alla conferma, senza l'app. La stessa
+  /// aritmetica sta in `CompleteSetIntent.swift`, dove non arriva nessun test:
+  /// se questi cambiano, va cambiato anche quello.
+  group('LiveSessionSnapshot.afterSetCompleted', () {
+    final tap = DateTime(2026, 8, 15, 18, 10);
+
+    test('restando serie dello stesso esercizio conta avanti', () {
+      final next = snapshot.afterSetCompleted(tap);
+
+      expect(next.exerciseName, 'Panca piana');
+      expect(next.setNumber, 3);
+      expect(next.totalSets, 4);
+      expect(next.canCompleteSet, isTrue);
+      // Il recupero parte dal tap, non da quando l'app si sveglierà.
+      expect(next.countdownStartsAt, tap);
+      expect(next.countdownEndsAt, tap.add(const Duration(seconds: 90)));
+      expect(next.countdownLabel, 'Recupero');
+    });
+
+    test('all\'ultima serie il banner passa all\'esercizio dopo', () {
+      final ultima = LiveSessionSnapshot(
+        logId: 3,
+        exerciseName: 'Panca piana',
+        entryIndex: 1,
+        setNumber: 4,
+        totalSets: 4,
+        canCompleteSet: true,
+        restSecondsOnComplete: 90,
+        nextExerciseName: 'Rematore',
+        nextEntryIndex: 2,
+        nextSetNumber: 1,
+        nextTotalSets: 3,
+        nextRestSecondsOnComplete: 60,
+        labels: labels,
+      );
+
+      final next = ultima.afterSetCompleted(tap);
+
+      expect(next.exerciseName, 'Rematore');
+      expect(next.entryIndex, 2);
+      expect(next.setNumber, 1);
+      expect(next.totalSets, 3);
+      expect(next.canCompleteSet, isTrue);
+      expect(next.restSecondsOnComplete, 60);
+      // Il recupero è ancora quello dell'esercizio appena finito.
+      expect(next.countdownEndsAt, tap.add(const Duration(seconds: 90)));
+      // Un passo solo: quale sia l'esercizio ancora dopo lo sa solo l'app.
+      expect(next.nextExerciseName, isNull);
+      expect(next.nextSetNumber, 0);
+    });
+
+    test('finite le serie il pulsante sparisce, senza inventarne una', () {
+      final ultima = LiveSessionSnapshot(
+        logId: 3,
+        exerciseName: 'Rematore',
+        entryIndex: 2,
+        setNumber: 3,
+        totalSets: 3,
+        canCompleteSet: true,
+        restSecondsOnComplete: 0,
+        labels: labels,
+      );
+
+      final next = ultima.afterSetCompleted(tap);
+
+      expect(next.setNumber, 3);
+      expect(next.canCompleteSet, isFalse);
+      expect(next.countdownEndsAt, isNull);
+      expect(next.countdownLabel, isNull);
+    });
+
+    test('senza recupero configurato non nasce nessun countdown', () {
+      final senzaRecupero = LiveSessionSnapshot(
+        logId: 3,
+        exerciseName: 'Panca piana',
+        entryIndex: 1,
+        setNumber: 1,
+        totalSets: 4,
+        canCompleteSet: true,
+        restSecondsOnComplete: 0,
+        labels: labels,
+      );
+
+      final next = senzaRecupero.afterSetCompleted(tap);
+
+      expect(next.setNumber, 2);
+      expect(next.countdownStartsAt, isNull);
+      expect(next.countdownEndsAt, isNull);
     });
   });
 }

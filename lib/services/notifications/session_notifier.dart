@@ -7,6 +7,36 @@ import 'notification_host.dart';
 /// futuro senza inondare il sistema di alarm.
 const int kMaxScheduledSignals = 10;
 
+/// Primo id dell'intervallo riservato ai segnali del timer.
+const int kFirstSignalId = 9100;
+
+/// Id del beep di fine recupero programmato dall'isolate di background quando
+/// l'utente conferma una serie dalla notifica ad app ferma.
+///
+/// Sta in coda all'intervallo dei segnali perché *è* un segnale del timer,
+/// programmato al posto dell'app: così se ne occupa [SessionNotifier] come di
+/// tutti gli altri, e sparisce appena l'app riprende in mano la sessione.
+const int kBackgroundRestReminderId = kFirstSignalId + kMaxScheduledSignals;
+
+/// Notifica di un segnale del timer.
+///
+/// Vive fuori dalla classe perché non la programma solo l'app: la usa anche
+/// l'isolate di background della notifica di sessione, che non ha né host né
+/// servizi.
+const NotificationDetails kTimerSignalDetails = NotificationDetails(
+  android: AndroidNotificationDetails(
+    'workout_timer',
+    'Timer allenamento',
+    channelDescription: 'Segnali dei timer durante la sessione di allenamento',
+    importance: Importance.max,
+    priority: Priority.high,
+    category: AndroidNotificationCategory.alarm,
+    playSound: true,
+    enableVibration: true,
+  ),
+  iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+);
+
 /// Notifiche locali che sostituiscono il beep quando l'app non è in primo
 /// piano (§7).
 ///
@@ -37,18 +67,8 @@ class LocalSessionNotifier implements SessionNotifier {
   LocalSessionNotifier({NotificationHost? host})
     : _host = host ?? NotificationHost();
 
-  /// Intervallo di id riservato ai segnali del timer: `cancelPending` li
-  /// annulla uno per uno senza toccare eventuali notifiche di altre feature.
-  static const int _firstId = 9100;
-
-  static const _channelId = 'workout_timer';
-  static const _channelName = 'Timer allenamento';
-  static const _channelDescription =
-      'Segnali dei timer durante la sessione di allenamento';
-
   final NotificationHost _host;
   bool _ready = false;
-  int _scheduledCount = 0;
 
   @override
   Future<void> prepare() async {
@@ -64,34 +84,19 @@ class LocalSessionNotifier implements SessionNotifier {
     await cancelPending();
     if (!_ready || times.isEmpty) return;
 
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        channelDescription: _channelDescription,
-        importance: Importance.max,
-        priority: Priority.high,
-        category: AndroidNotificationCategory.alarm,
-        playSound: true,
-        enableVibration: true,
-      ),
-      iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
-    );
-
     final capped = times.length > kMaxScheduledSignals
         ? times.sublist(0, kMaxScheduledSignals)
         : times;
     for (var i = 0; i < capped.length; i++) {
       try {
         await _host.plugin.zonedSchedule(
-          id: _firstId + i,
+          id: kFirstSignalId + i,
           scheduledDate: tz.TZDateTime.from(capped[i], tz.local),
           title: title,
           body: body,
-          notificationDetails: details,
+          notificationDetails: kTimerSignalDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
-        _scheduledCount = i + 1;
       } catch (error, stackTrace) {
         reportNotificationError('programmazione notifica', error, stackTrace);
         break;
@@ -99,15 +104,21 @@ class LocalSessionNotifier implements SessionNotifier {
     }
   }
 
+  /// Annulla **tutto** l'intervallo riservato, non solo quello che ha
+  /// programmato questa istanza: dopo un riavvio del processo un contatore
+  /// ripartirebbe da zero mentre le notifiche di prima sono ancora lì, e il
+  /// beep di fine recupero può averlo programmato l'isolate di background.
   @override
   Future<void> cancelPending() async {
-    for (var i = 0; i < _scheduledCount; i++) {
+    // Senza plugin non c'è niente da annullare, e undici chiamate destinate a
+    // fallire riempirebbero il log a ogni cambio di stato.
+    if (!_ready) return;
+    for (var id = kFirstSignalId; id <= kBackgroundRestReminderId; id++) {
       try {
-        await _host.plugin.cancel(id: _firstId + i);
+        await _host.plugin.cancel(id: id);
       } catch (error, stackTrace) {
         reportNotificationError('annullamento notifica', error, stackTrace);
       }
     }
-    _scheduledCount = 0;
   }
 }
