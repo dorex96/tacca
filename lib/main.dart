@@ -12,9 +12,9 @@ Future<void> main() async {
 
   // Le date localizzate (storico, "ultima volta") passano da `DateFormat`, che
   // richiede i simboli della locale caricati prima del primo uso.
-  await initializeDateFormatting(
-    AppConstants.supportedLocales.first.toString(),
-  );
+  for (final locale in AppConstants.supportedLocales) {
+    await initializeDateFormatting(locale.toString());
+  }
 
   // Lo Store ObjectBox viene aperto una sola volta, prima di runApp, e
   // iniettato nell'albero tramite la composition root (app/di.dart).

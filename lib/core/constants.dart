@@ -2,8 +2,8 @@ import 'package:flutter/widgets.dart';
 
 /// Costanti applicative condivise.
 abstract final class AppConstants {
-  /// Locale supportate in v1 (solo italiano).
-  static const List<Locale> supportedLocales = [Locale('it')];
+  /// Locale supportate: italiano (default) e inglese.
+  static const List<Locale> supportedLocales = [Locale('it'), Locale('en')];
 
   /// Termini e condizioni completi. Si aprono nel browser di sistema
   /// (`LinkOpener`): l'app non incorpora nessuna WebView.
