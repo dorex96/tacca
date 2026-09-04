@@ -35,6 +35,10 @@ dependencies:
   # Apre i termini e condizioni nel browser di sistema. L'app non
   # incorpora nessuna WebView: vedi lib/services/links/link_opener.dart.
   url_launcher: ^6.3.2
+  # Foglio di condivisione di sistema: serve solo a consegnare a un'altra app
+  # (WhatsApp, mail, "Salva nelle foto") il PNG di una scheda esportata. Il
+  # disegno dell'immagine è nostro, vedi services/images/widget_image_renderer.dart.
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:
