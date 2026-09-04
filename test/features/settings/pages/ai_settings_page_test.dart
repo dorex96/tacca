@@ -67,6 +67,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('it'),
         home: BlocProvider(
           create: (context) => SettingsCubit(
             settings: settings,

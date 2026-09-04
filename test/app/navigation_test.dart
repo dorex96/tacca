@@ -107,6 +107,7 @@ void main() {
           child: MaterialApp.router(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('it'),
             routerConfig: router,
           ),
         ),
@@ -263,6 +264,7 @@ void main() {
                     localizationsDelegates:
                         AppLocalizations.localizationsDelegates,
                     supportedLocales: AppLocalizations.supportedLocales,
+                    locale: const Locale('it'),
                     routerConfig: router,
                   )
                 : const SizedBox.shrink(),
@@ -377,6 +379,7 @@ void main() {
           child: MaterialApp.router(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('it'),
             routerConfig: router,
           ),
         ),

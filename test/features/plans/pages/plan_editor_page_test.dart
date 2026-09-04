@@ -41,6 +41,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('it'),
         home: BlocProvider(
           create: (context) => PlanEditorCubit.create(repository: repository),
           child: const PlanEditorPage(),
@@ -178,6 +179,7 @@ void main() {
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('it'),
           home: BlocProvider(
             create: (context) =>
                 PlanEditorCubit.draft(repository: repository, draft: draft),

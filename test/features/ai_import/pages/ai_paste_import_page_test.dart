@@ -35,6 +35,7 @@ void main() {
       MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('it'),
         routerConfig: GoRouter(
           initialLocation: '/',
           routes: [

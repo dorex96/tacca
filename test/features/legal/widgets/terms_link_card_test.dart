@@ -27,6 +27,7 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('it'),
           home: const Scaffold(body: TermsLinkCard()),
         ),
       ),

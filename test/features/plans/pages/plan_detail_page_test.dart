@@ -71,6 +71,7 @@ void main() {
         child: MaterialApp.router(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('it'),
           routerConfig: GoRouter(
             initialLocation: '/plans/$planId',
             routes: [
